@@ -24,18 +24,24 @@ object BinaryOperator extends Enumeration {
 }
 
 
-sealed trait VariableType extends Positional
+sealed trait VariableType extends Positional {
+  def toJvmType(): String
+}
 
 object VariableType {
   def apply(t: String) = t.toLowerCase match {
     case "integer" => Number
     case "boolean" => Boolean
   }
+
 }
 
-object Number extends VariableType
-object Boolean extends VariableType
-object NoType extends VariableType
+object Number extends VariableType {
+  override def toJvmType(): String = "I"
+}
+object Boolean extends VariableType {
+  override def toJvmType(): String = "Z"
+}
 
 object LoopType extends Enumeration {
   type LoopType = Value

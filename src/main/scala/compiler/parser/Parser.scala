@@ -51,7 +51,7 @@ object Parser extends Parsers {
   def variableRef = identifier ^^ VariableRef
 
   def expression = positioned {
-    def parExpresssion: Parser[Expression] = LEFT_PARENTHESIS() ~> thirdExpression <~ RIGHT_PARENTHESIS()
+    def parExpresssion: Parser[Expression] = LEFT_PARENTHESIS() ~> lastExpression <~ RIGHT_PARENTHESIS()
     def firstExpression = number | booleanConst | variableRef | parExpresssion
     def secondExpression = binaryOperator(firstExpression, TIMES() | DIVISION() | MODULO() | AND())
     def thirdExpression = binaryOperator(secondExpression, PLUS() | MINUS() | OR())

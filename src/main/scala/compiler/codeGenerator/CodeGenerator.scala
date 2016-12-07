@@ -1,8 +1,8 @@
 package compiler.codeGenerator
 
 import compiler.parser._
-import org.objectweb.asm.{MethodVisitor, ClassWriter}
 import org.objectweb.asm.Opcodes._
+import org.objectweb.asm.{ClassWriter, Label, MethodVisitor}
 
 import scala.collection.mutable
 
@@ -30,7 +30,7 @@ object CodeGenerator {
 
     case VarDeclarationList(variables, variablesType) =>
       variables.foreach(variable => {
-        val fieldVisitor = scope.classWriter.visitField(ACC_PRIVATE, variable, "I", null, null)
+        val fieldVisitor = scope.classWriter.visitField(ACC_PRIVATE, variable, variablesType.toJvmType, null, null)
         fieldVisitor.visitEnd()
       })
     case ConstDeclarationBlock(declarations) =>
@@ -54,7 +54,7 @@ object CodeGenerator {
         methodVisitor.visitFieldInsn(PUTFIELD, "pascalJvm/Main", variable, "I");
       }
 
-      statements.foreach(generateCode(_)( CodeGeneratorScope(scope.classWriter, methodVisitor)))
+      statements.foreach(generateCode(_)(CodeGeneratorScope(scope.classWriter, methodVisitor)))
 
       methodVisitor.visitInsn(RETURN)
       methodVisitor.visitMaxs(1, 1) //params will be ignored because of COMPUTE_FRAMES used
@@ -63,20 +63,49 @@ object CodeGenerator {
     case AssignStatement(variable, expr) =>
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
       generateCode(expr)
-      scope.methodVisitor.visitFieldInsn(PUTFIELD, "pascalJvm/Main",variable.variable, "I")
+      scope.methodVisitor.visitFieldInsn(PUTFIELD, "pascalJvm/Main", variable.variable, "I")
 
     case Number(value) =>
       scope.methodVisitor.visitIntInsn(BIPUSH, value)
 
+    case BooleanConst(value) =>
+      scope.methodVisitor.visitIntInsn(BIPUSH, if (value) 1 else 0)
+
     case BinaryOperatorExpression(exp1, exp2, op) =>
       generateCode(exp1)
       generateCode(exp2)
+
+      def comparationExpression(operatorCode : Int) = {
+        val falseWay = new Label
+        val continue = new Label
+        scope.methodVisitor.visitJumpInsn(operatorCode, falseWay)
+        scope.methodVisitor.visitInsn(ICONST_1)
+        scope.methodVisitor.visitJumpInsn(GOTO, continue)
+
+        scope.methodVisitor.visitLabel(falseWay)
+        scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
+        scope.methodVisitor.visitInsn(ICONST_0)
+        scope.methodVisitor.visitLabel(continue)
+        scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
+      }
+
       op match {
         case BinaryOperator.Plus => scope.methodVisitor.visitInsn(IADD)
         case BinaryOperator.Minus => scope.methodVisitor.visitInsn(ISUB)
         case BinaryOperator.Times => scope.methodVisitor.visitInsn(IMUL)
         case BinaryOperator.Division => scope.methodVisitor.visitInsn(IDIV)
         case BinaryOperator.Modulo => scope.methodVisitor.visitInsn(IREM)
+
+        //No short-circuiting for now)
+        case BinaryOperator.And => scope.methodVisitor.visitInsn(IAND)
+        case BinaryOperator.Or => scope.methodVisitor.visitInsn(IOR)
+
+        case BinaryOperator.Less => comparationExpression(IF_ICMPGE)
+        case BinaryOperator.LessEqual => comparationExpression(IF_ICMPGT)
+        case BinaryOperator.Greater => comparationExpression(IF_ICMPLE)
+        case BinaryOperator.GreaterEqual => comparationExpression(IF_ICMPLT)
+
+
       }
 
     case VariableRef(variable) =>
