@@ -13,32 +13,48 @@ object CodeGenerator {
 
   case class CodeGeneratorScope(classWriter: ClassWriter, methodVisitor: MethodVisitor)
 
-
+  
   private def generateCode(node: Node)(implicit scope: CodeGeneratorScope): Unit = node match {
 
     case Program(header, body) =>
       scope.classWriter.visit(52, ACC_PUBLIC + ACC_SUPER, "Main", null, "java/lang/Object", null)
       generateCode(header)
+      generateBody()
+      generateMainMethod()
+      scope.classWriter.visitEnd()
 
+      def generateBody() = {
+        val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
 
-      val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
-
-      methodVisitor.visitVarInsn(ALOAD, 0)
-      methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-
-      constToInit.foreach { case (variable, value) =>
         methodVisitor.visitVarInsn(ALOAD, 0)
-        methodVisitor.visitIntInsn(BIPUSH, value)
-        methodVisitor.visitFieldInsn(PUTFIELD, "Main", variable, "I");
+        methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+
+        constToInit.foreach { case (variable, value) =>
+          methodVisitor.visitVarInsn(ALOAD, 0)
+          methodVisitor.visitIntInsn(BIPUSH, value)
+          methodVisitor.visitFieldInsn(PUTFIELD, "Main", variable, "I");
+        }
+
+        generateCode(body)(CodeGeneratorScope(scope.classWriter, methodVisitor))
+        methodVisitor.visitInsn(RETURN)
+        methodVisitor.visitMaxs(1, 1) //params will be ignored because of COMPUTE_FRAMES used
+        methodVisitor.visitEnd()
       }
 
-      generateCode(body)(CodeGeneratorScope(scope.classWriter, methodVisitor))
+      def generateMainMethod() =  {
+        val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC + ACC_STATIC, "main", "([Ljava/lang/String;)V", null, null)
+        methodVisitor.visitCode()
 
-      methodVisitor.visitInsn(RETURN)
-      methodVisitor.visitMaxs(1, 1) //params will be ignored because of COMPUTE_FRAMES used
-      methodVisitor.visitEnd()
+        methodVisitor.visitTypeInsn(NEW, "Main")
+        methodVisitor.visitInsn(DUP)
+        methodVisitor.visitMethodInsn(INVOKESPECIAL, "Main", "<init>", "()V", false)
+        methodVisitor.visitInsn(POP)
+        methodVisitor.visitInsn(RETURN)
 
-      scope.classWriter.visitEnd()
+        methodVisitor.visitMaxs(2, 1)
+        methodVisitor.visitEnd()
+      }
+
 
     case Header(declarations) =>
       declarations.foreach(generateCode)
