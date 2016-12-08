@@ -11,13 +11,12 @@ object CodeGenerator {
 
   val constToInit: mutable.Map[String, Int] = new mutable.HashMap[String, Int]
 
-  case class CodeGeneratorScope(classWriter: ClassWriter, methodVisitor: MethodVisitor)
-
+  case class CodeGeneratorScope(classWriter: ClassWriter, methodVisitor: MethodVisitor, className: String)
 
   private def generateCode(node: Node)(implicit scope: CodeGeneratorScope): Unit = node match {
 
     case Program(header, body) =>
-      scope.classWriter.visit(52, ACC_PUBLIC + ACC_SUPER, "Main", null, "java/lang/Object", null)
+      scope.classWriter.visit(52, ACC_PUBLIC + ACC_SUPER, scope.className, null, "java/lang/Object", null)
       generateCode(header)
       generateBody()
       generateMainMethod()
@@ -32,10 +31,10 @@ object CodeGenerator {
         constToInit.foreach { case (variable, value) =>
           methodVisitor.visitVarInsn(ALOAD, 0)
           methodVisitor.visitLdcInsn(new Integer(value))
-          methodVisitor.visitFieldInsn(PUTFIELD, "Main", variable, "I");
+          methodVisitor.visitFieldInsn(PUTFIELD, scope.className, variable, "I");
         }
 
-        generateCode(body)(CodeGeneratorScope(scope.classWriter, methodVisitor))
+        generateCode(body)(CodeGeneratorScope(scope.classWriter, methodVisitor, scope.className))
         methodVisitor.visitInsn(RETURN)
         methodVisitor.visitMaxs(1, 1) //params will be ignored because of COMPUTE_FRAMES used
         methodVisitor.visitEnd()
@@ -44,8 +43,8 @@ object CodeGenerator {
       def generateMainMethod() = {
         val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC + ACC_STATIC, "main", "([Ljava/lang/String;)V", null, null)
         methodVisitor.visitCode()
-        methodVisitor.visitTypeInsn(NEW, "Main")
-        methodVisitor.visitMethodInsn(INVOKESPECIAL, "Main", "<init>", "()V", false)
+        methodVisitor.visitTypeInsn(NEW, scope.className)
+        methodVisitor.visitMethodInsn(INVOKESPECIAL, scope.className, "<init>", "()V", false)
         methodVisitor.visitInsn(RETURN)
         methodVisitor.visitMaxs(2, 1)
         methodVisitor.visitEnd()
@@ -78,7 +77,7 @@ object CodeGenerator {
     case AssignStatement(variable, expr) =>
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
       generateCode(expr)
-      scope.methodVisitor.visitFieldInsn(PUTFIELD, "Main", variable.variable, "I")
+      scope.methodVisitor.visitFieldInsn(PUTFIELD, scope.className, variable.variable, "I")
 
     case Number(value) =>
       scope.methodVisitor.visitLdcInsn(new Integer(value))
@@ -125,7 +124,7 @@ object CodeGenerator {
 
     case VariableRef(variable) =>
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
-      scope.methodVisitor.visitFieldInsn(GETFIELD, "Main", variable, "I")
+      scope.methodVisitor.visitFieldInsn(GETFIELD, scope.className, variable, "I")
 
     case IfStatement(condition, trueWay, falseWay) =>
       generateCode(condition)
@@ -161,7 +160,7 @@ object CodeGenerator {
 
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
       generateCode(from)
-      scope.methodVisitor.visitFieldInsn(PUTFIELD, "Main", counterVariable.variable, "I")
+      scope.methodVisitor.visitFieldInsn(PUTFIELD, scope.className, counterVariable.variable, "I")
 
       generateCode(to)
 
@@ -170,20 +169,26 @@ object CodeGenerator {
 
       scope.methodVisitor.visitInsn(DUP)
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
-      scope.methodVisitor.visitFieldInsn(GETFIELD, "Main", counterVariable.variable, "I")
+      scope.methodVisitor.visitFieldInsn(GETFIELD, scope.className, counterVariable.variable, "I")
       scope.methodVisitor.visitInsn(SWAP)
-      scope.methodVisitor.visitJumpInsn(IF_ICMPGT, continueLabel)
+
+      loopType match {
+        case LoopType.To => scope.methodVisitor.visitJumpInsn(IF_ICMPGT, continueLabel)
+        case LoopType.Downto => scope.methodVisitor.visitJumpInsn(IF_ICMPLT, continueLabel)
+
+      }
 
       generateCode(statements)
 
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
-      scope.methodVisitor.visitFieldInsn(GETFIELD, "Main", counterVariable.variable, "I")
+      scope.methodVisitor.visitFieldInsn(GETFIELD, scope.className, counterVariable.variable, "I")
       scope.methodVisitor.visitInsn(ICONST_1)
-      scope.methodVisitor.visitInsn(IADD)
-      scope.methodVisitor.visitFieldInsn(PUTFIELD, "Main", counterVariable.variable, "I")
-
-
+      loopType match {
+        case LoopType.To => scope.methodVisitor.visitInsn(IADD)
+        case LoopType.Downto => scope.methodVisitor.visitInsn(ISUB)
+      }
+      scope.methodVisitor.visitFieldInsn(PUTFIELD, scope.className, counterVariable.variable, "I")
 
       scope.methodVisitor.visitJumpInsn(GOTO, beginLabel)
 
@@ -192,10 +197,10 @@ object CodeGenerator {
   }
 
 
-  def apply(ast: Program) = {
+  def apply(ast: Program, className: String) = {
     val classWriter: ClassWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES)
 
-    generateCode(ast)(CodeGeneratorScope(classWriter, null))
+    generateCode(ast)(CodeGeneratorScope(classWriter, null, className.capitalize))
     classWriter.toByteArray
   }
 }

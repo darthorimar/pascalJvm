@@ -19,7 +19,7 @@ class CodeGeneratorTest extends FlatSpec with Matchers {
         |program;
         |  var i,b: Integer;
         |begin
-        | for i := 1 to 1000 do
+        | for i := 100 downto 1 do
         |  begin
         |    b :=i + 10;
         |  end;
@@ -29,7 +29,7 @@ class CodeGeneratorTest extends FlatSpec with Matchers {
       case Left(errors) => println(errors)
       case Right(bytes) =>
         val ast = tokenizeAndParse(code).right.get
-        val bytes = CodeGenerator(ast)
+        val bytes = CodeGenerator(ast, "Main")
 
         val bos = new BufferedOutputStream(new FileOutputStream("Main.class"))
         Stream.continually(bos.write(bytes))
