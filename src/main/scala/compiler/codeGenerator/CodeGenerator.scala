@@ -17,9 +17,27 @@ object CodeGenerator {
   private def generateCode(node: Node)(implicit scope: CodeGeneratorScope): Unit = node match {
 
     case Program(header, body) =>
-      scope.classWriter.visit(52, ACC_PUBLIC + ACC_SUPER, "pascalJvm/Main", null, "java/lang/Object", null)
+      scope.classWriter.visit(52, ACC_PUBLIC + ACC_SUPER, "Main", null, "java/lang/Object", null)
       generateCode(header)
-      generateCode(body)
+
+
+      val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
+
+      methodVisitor.visitVarInsn(ALOAD, 0)
+      methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+
+      constToInit.foreach { case (variable, value) =>
+        methodVisitor.visitVarInsn(ALOAD, 0)
+        methodVisitor.visitIntInsn(BIPUSH, value)
+        methodVisitor.visitFieldInsn(PUTFIELD, "Main", variable, "I");
+      }
+
+      generateCode(body)(CodeGeneratorScope(scope.classWriter, methodVisitor))
+
+      methodVisitor.visitInsn(RETURN)
+      methodVisitor.visitMaxs(1, 1) //params will be ignored because of COMPUTE_FRAMES used
+      methodVisitor.visitEnd()
+
       scope.classWriter.visitEnd()
 
     case Header(declarations) =>
@@ -43,27 +61,12 @@ object CodeGenerator {
       constToInit.put(variable, value);
 
     case StatementBlock(statements) =>
-      val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
-
-      methodVisitor.visitVarInsn(ALOAD, 0)
-      methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-
-      constToInit.foreach { case (variable, value) =>
-        methodVisitor.visitVarInsn(ALOAD, 0)
-        methodVisitor.visitIntInsn(BIPUSH, value)
-        methodVisitor.visitFieldInsn(PUTFIELD, "pascalJvm/Main", variable, "I");
-      }
-
-      statements.foreach(generateCode(_)(CodeGeneratorScope(scope.classWriter, methodVisitor)))
-
-      methodVisitor.visitInsn(RETURN)
-      methodVisitor.visitMaxs(1, 1) //params will be ignored because of COMPUTE_FRAMES used
-      methodVisitor.visitEnd()
+      statements.foreach(generateCode)
 
     case AssignStatement(variable, expr) =>
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
       generateCode(expr)
-      scope.methodVisitor.visitFieldInsn(PUTFIELD, "pascalJvm/Main", variable.variable, "I")
+      scope.methodVisitor.visitFieldInsn(PUTFIELD, "Main", variable.variable, "I")
 
     case Number(value) =>
       scope.methodVisitor.visitIntInsn(BIPUSH, value)
@@ -75,17 +78,17 @@ object CodeGenerator {
       generateCode(exp1)
       generateCode(exp2)
 
-      def comparationExpression(operatorCode : Int) = {
-        val falseWay = new Label
-        val continue = new Label
-        scope.methodVisitor.visitJumpInsn(operatorCode, falseWay)
+      def compareExpression(operatorCode : Int) = {
+        val falseWayLabel = new Label
+        val continueLabel = new Label
+        scope.methodVisitor.visitJumpInsn(operatorCode, falseWayLabel)
         scope.methodVisitor.visitInsn(ICONST_1)
-        scope.methodVisitor.visitJumpInsn(GOTO, continue)
+        scope.methodVisitor.visitJumpInsn(GOTO, continueLabel)
 
-        scope.methodVisitor.visitLabel(falseWay)
+        scope.methodVisitor.visitLabel(falseWayLabel)
         scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
         scope.methodVisitor.visitInsn(ICONST_0)
-        scope.methodVisitor.visitLabel(continue)
+        scope.methodVisitor.visitLabel(continueLabel)
         scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
       }
 
@@ -100,19 +103,33 @@ object CodeGenerator {
         case BinaryOperator.And => scope.methodVisitor.visitInsn(IAND)
         case BinaryOperator.Or => scope.methodVisitor.visitInsn(IOR)
 
-        case BinaryOperator.Less => comparationExpression(IF_ICMPGE)
-        case BinaryOperator.LessEqual => comparationExpression(IF_ICMPGT)
-        case BinaryOperator.Greater => comparationExpression(IF_ICMPLE)
-        case BinaryOperator.GreaterEqual => comparationExpression(IF_ICMPLT)
-
-
+        case BinaryOperator.Less => compareExpression(IF_ICMPGE)
+        case BinaryOperator.LessEqual => compareExpression(IF_ICMPGT)
+        case BinaryOperator.Greater => compareExpression(IF_ICMPLE)
+        case BinaryOperator.GreaterEqual => compareExpression(IF_ICMPLT)
+        case BinaryOperator.Equals => compareExpression(IF_ICMPNE)
+        case BinaryOperator.NotEquals => compareExpression(IF_ICMPEQ);
       }
 
     case VariableRef(variable) =>
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
-      scope.methodVisitor.visitFieldInsn(GETFIELD, "pascalJvm/Main", variable, "I")
+      scope.methodVisitor.visitFieldInsn(GETFIELD, "Main", variable, "I")
 
       scope.classWriter.toByteArray
+
+    case IfStatement(condition, trueWay, falseWay) =>
+      generateCode(condition)
+      val falseWayLabel = new Label
+      val continueLabel = new Label
+      scope.methodVisitor.visitInsn(ICONST_1)
+      scope.methodVisitor.visitJumpInsn(IF_ICMPNE, falseWayLabel)
+      generateCode(trueWay)
+      scope.methodVisitor.visitJumpInsn(GOTO, continueLabel)
+      scope.methodVisitor.visitLabel(falseWayLabel)
+      scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
+      if (falseWay.isDefined) generateCode(falseWay.get)
+      scope.methodVisitor.visitLabel(continueLabel)
+      scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
   }
 
   def apply(ast: Program) = {

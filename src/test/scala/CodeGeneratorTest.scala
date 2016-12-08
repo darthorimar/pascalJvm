@@ -17,19 +17,27 @@ class CodeGeneratorTest extends FlatSpec with Matchers {
     val code =
       """
         |program;
-        |  var a, b: boolean;
+        |  var a,b: Integer;
         |begin
-        |  a := (1 * 3 - 4 < 2) and (3 >= 4);
-        |end.
-      """.stripMargin
-
+        |  if true then
+        |     if true then
+        |   a :=3;
+        |  else
+        |    a:=3;
+        |  else
+        |  begin
+        |    a := 4;
+        |    a := 5;
+        |  end;
+        |end.""".stripMargin
 
     tokenizeAndParse(code) match {
       case Left(errors) => println(errors)
       case Right(bytes) =>
-        val bytes = CodeGenerator(tokenizeAndParse(code).right.get)
+        val ast = tokenizeAndParse(code).right.get
+        val bytes = CodeGenerator(ast)
 
-        val bos = new BufferedOutputStream(new FileOutputStream("out.class"))
+        val bos = new BufferedOutputStream(new FileOutputStream("Main.class"))
         Stream.continually(bos.write(bytes))
         bos.close()
     }

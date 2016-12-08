@@ -64,7 +64,7 @@ object Parser extends Parsers {
   def block: Parser[StatementBlock] = positioned {
     val withBeginEnd = IDENTIFIER("begin") ~> rep(statement) <~ IDENTIFIER("end") ~ SEMICOLON() ^^
       (statements => StatementBlock(statements))
-    val withoutBeginEnd = rep1(statement) ^^ (statements => StatementBlock(statements))
+    val withoutBeginEnd = statement ^^ (statement => StatementBlock(List(statement)))
     withBeginEnd | withoutBeginEnd
   }
 
