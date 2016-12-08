@@ -13,7 +13,7 @@ object CodeGenerator {
 
   case class CodeGeneratorScope(classWriter: ClassWriter, methodVisitor: MethodVisitor)
 
-  
+
   private def generateCode(node: Node)(implicit scope: CodeGeneratorScope): Unit = node match {
 
     case Program(header, body) =>
@@ -31,7 +31,7 @@ object CodeGenerator {
 
         constToInit.foreach { case (variable, value) =>
           methodVisitor.visitVarInsn(ALOAD, 0)
-          methodVisitor.visitIntInsn(BIPUSH, value)
+          methodVisitor.visitLdcInsn(new Integer(value))
           methodVisitor.visitFieldInsn(PUTFIELD, "Main", variable, "I");
         }
 
@@ -41,16 +41,12 @@ object CodeGenerator {
         methodVisitor.visitEnd()
       }
 
-      def generateMainMethod() =  {
+      def generateMainMethod() = {
         val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC + ACC_STATIC, "main", "([Ljava/lang/String;)V", null, null)
         methodVisitor.visitCode()
-
         methodVisitor.visitTypeInsn(NEW, "Main")
-        methodVisitor.visitInsn(DUP)
         methodVisitor.visitMethodInsn(INVOKESPECIAL, "Main", "<init>", "()V", false)
-        methodVisitor.visitInsn(POP)
         methodVisitor.visitInsn(RETURN)
-
         methodVisitor.visitMaxs(2, 1)
         methodVisitor.visitEnd()
       }
@@ -85,7 +81,7 @@ object CodeGenerator {
       scope.methodVisitor.visitFieldInsn(PUTFIELD, "Main", variable.variable, "I")
 
     case Number(value) =>
-      scope.methodVisitor.visitIntInsn(BIPUSH, value)
+      scope.methodVisitor.visitLdcInsn(new Integer(value))
 
     case BooleanConst(value) =>
       scope.methodVisitor.visitIntInsn(BIPUSH, if (value) 1 else 0)
@@ -94,7 +90,7 @@ object CodeGenerator {
       generateCode(exp1)
       generateCode(exp2)
 
-      def compareExpression(operatorCode : Int) = {
+      def compareExpression(operatorCode: Int) = {
         val falseWayLabel = new Label
         val continueLabel = new Label
         scope.methodVisitor.visitJumpInsn(operatorCode, falseWayLabel)
@@ -131,8 +127,6 @@ object CodeGenerator {
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
       scope.methodVisitor.visitFieldInsn(GETFIELD, "Main", variable, "I")
 
-      scope.classWriter.toByteArray
-
     case IfStatement(condition, trueWay, falseWay) =>
       generateCode(condition)
       val falseWayLabel = new Label
@@ -146,7 +140,57 @@ object CodeGenerator {
       if (falseWay.isDefined) generateCode(falseWay.get)
       scope.methodVisitor.visitLabel(continueLabel)
       scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
+
+    case WhileStatement(condition, statements) =>
+      val beginLabel = new Label
+      val continueLabel = new Label
+
+      scope.methodVisitor.visitLabel(beginLabel)
+      scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
+      generateCode(condition)
+      scope.methodVisitor.visitInsn(ICONST_1)
+      scope.methodVisitor.visitJumpInsn(IF_ICMPNE, continueLabel)
+      generateCode(statements)
+      scope.methodVisitor.visitJumpInsn(GOTO, beginLabel)
+      scope.methodVisitor.visitLabel(continueLabel)
+      scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
+
+    case ForStatement(counterVariable, from, loopType, to, statements) =>
+      val beginLabel = new Label
+      val continueLabel = new Label
+
+      scope.methodVisitor.visitVarInsn(ALOAD, 0)
+      generateCode(from)
+      scope.methodVisitor.visitFieldInsn(PUTFIELD, "Main", counterVariable.variable, "I")
+
+      generateCode(to)
+
+      scope.methodVisitor.visitLabel(beginLabel)
+      scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
+
+      scope.methodVisitor.visitInsn(DUP)
+      scope.methodVisitor.visitVarInsn(ALOAD, 0)
+      scope.methodVisitor.visitFieldInsn(GETFIELD, "Main", counterVariable.variable, "I")
+      scope.methodVisitor.visitInsn(SWAP)
+      scope.methodVisitor.visitJumpInsn(IF_ICMPGT, continueLabel)
+
+      generateCode(statements)
+
+      scope.methodVisitor.visitVarInsn(ALOAD, 0)
+      scope.methodVisitor.visitVarInsn(ALOAD, 0)
+      scope.methodVisitor.visitFieldInsn(GETFIELD, "Main", counterVariable.variable, "I")
+      scope.methodVisitor.visitInsn(ICONST_1)
+      scope.methodVisitor.visitInsn(IADD)
+      scope.methodVisitor.visitFieldInsn(PUTFIELD, "Main", counterVariable.variable, "I")
+
+
+
+      scope.methodVisitor.visitJumpInsn(GOTO, beginLabel)
+
+      scope.methodVisitor.visitLabel(continueLabel)
+      scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
   }
+
 
   def apply(ast: Program) = {
     val classWriter: ClassWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES)

@@ -17,17 +17,11 @@ class CodeGeneratorTest extends FlatSpec with Matchers {
     val code =
       """
         |program;
-        |  var a,b: Integer;
+        |  var i,b: Integer;
         |begin
-        |  if true then
-        |     if true then
-        |   a :=3;
-        |  else
-        |    a:=3;
-        |  else
+        | for i := 1 to 1000 do
         |  begin
-        |    a := 4;
-        |    a := 5;
+        |    b :=i + 10;
         |  end;
         |end.""".stripMargin
 
