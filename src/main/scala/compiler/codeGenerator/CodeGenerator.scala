@@ -199,6 +199,7 @@ object CodeGenerator {
 
       scope.methodVisitor.visitLabel(continueLabel)
       scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
+      scope.methodVisitor.visitInsn(POP)
 
     case procedureCall@ProcedureCall(name, parameters) =>
       if (StandardFunction.isStandardFunction(name)) {
