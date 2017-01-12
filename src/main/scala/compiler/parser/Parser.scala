@@ -85,7 +85,14 @@ object Parser extends Parsers {
         => ForStatement(variableName, from, loopType, to, loopBody)
       }
 
-      assignStatement | ifStatement | whileStatement | forStatement
+
+      def procedureCallStatement = identifier ~ LEFT_PARENTHESIS() ~
+        nonEmptyListWithSeparator(expression, COMMA()) ~ RIGHT_PARENTHESIS() <~ SEMICOLON() ^^ {
+        case name ~ _ ~ parameters ~ _  =>
+          ProcedureCall(name, parameters.map(expression => ProcedureParameter(expression)))
+      }
+
+      assignStatement | ifStatement | whileStatement | forStatement | procedureCallStatement
     }
   }
 

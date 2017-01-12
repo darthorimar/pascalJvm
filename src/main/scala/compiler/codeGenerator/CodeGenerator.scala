@@ -1,5 +1,6 @@
 package compiler.codeGenerator
 
+import common.StandardFunction
 import compiler.parser._
 import org.objectweb.asm.Opcodes._
 import org.objectweb.asm.{ClassWriter, Label, MethodVisitor}
@@ -11,76 +12,11 @@ object CodeGenerator {
 
   val constToInit: mutable.Map[String, Int] = new mutable.HashMap[String, Int]
 
-  case class CodeGeneratorScope(classWriter: ClassWriter, methodVisitor: MethodVisitor, className: String)
+  case class Scope(classWriter: ClassWriter, methodVisitor: MethodVisitor, className: String)
 
-  private def generateCode(node: Node)(implicit scope: CodeGeneratorScope): Unit = node match {
-
-    case Program(header, body) =>
-      scope.classWriter.visit(52, ACC_PUBLIC + ACC_SUPER, scope.className, null, "java/lang/Object", null)
-      generateCode(header)
-      generateBody()
-      generateMainMethod()
-      scope.classWriter.visitEnd()
-
-      def generateBody() = {
-        val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
-
-        methodVisitor.visitVarInsn(ALOAD, 0)
-        methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-
-        constToInit.foreach { case (variable, value) =>
-          methodVisitor.visitVarInsn(ALOAD, 0)
-          methodVisitor.visitLdcInsn(new Integer(value))
-          methodVisitor.visitFieldInsn(PUTFIELD, scope.className, variable, "I");
-        }
-
-        generateCode(body)(CodeGeneratorScope(scope.classWriter, methodVisitor, scope.className))
-        methodVisitor.visitInsn(RETURN)
-        methodVisitor.visitMaxs(1, 1) //params will be ignored because of COMPUTE_FRAMES used
-        methodVisitor.visitEnd()
-      }
-
-      def generateMainMethod() = {
-        val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC + ACC_STATIC, "main", "([Ljava/lang/String;)V", null, null)
-        methodVisitor.visitCode()
-        methodVisitor.visitTypeInsn(NEW, scope.className)
-        methodVisitor.visitMethodInsn(INVOKESPECIAL, scope.className, "<init>", "()V", false)
-        methodVisitor.visitInsn(RETURN)
-        methodVisitor.visitMaxs(2, 1)
-        methodVisitor.visitEnd()
-      }
-
-
-    case Header(declarations) =>
-      declarations.foreach(generateCode)
-
-    case VarDeclarationBlock(declarations) =>
-      declarations.foreach(generateCode)
-
-    case VarDeclarationList(variables, variablesType) =>
-      variables.foreach(variable => {
-        val fieldVisitor = scope.classWriter.visitField(ACC_PRIVATE, variable, variablesType.toJvmType, null, null)
-        fieldVisitor.visitEnd()
-      })
-    case ConstDeclarationBlock(declarations) =>
-      declarations.foreach(generateCode)
-
-    case ConstDeclaration(variable, value) =>
-      println(s"$variable $value")
-      val fieldVisitor = scope.classWriter.visitField(ACC_PRIVATE + ACC_FINAL, variable, "I", null, null)
-      fieldVisitor.visitEnd()
-      constToInit.put(variable, value);
-
-    case StatementBlock(statements) =>
-      statements.foreach(generateCode)
-
-    case AssignStatement(variable, expr) =>
-      scope.methodVisitor.visitVarInsn(ALOAD, 0)
-      generateCode(expr)
-      scope.methodVisitor.visitFieldInsn(PUTFIELD, scope.className, variable.variable, "I")
-
+  def generateExpression(expression: Expression)(implicit scope: Scope) = expression match {
     case Number(value) =>
-      scope.methodVisitor.visitLdcInsn(new Integer(value))
+     scope.methodVisitor.visitLdcInsn(new Integer(value))
 
     case BooleanConst(value) =>
       scope.methodVisitor.visitIntInsn(BIPUSH, if (value) 1 else 0)
@@ -125,6 +61,76 @@ object CodeGenerator {
     case VariableRef(variable) =>
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
       scope.methodVisitor.visitFieldInsn(GETFIELD, scope.className, variable, "I")
+  }
+
+  private def generateCode(node: Node)(implicit scope: Scope): Unit = node match {
+
+    case Program(header, body) =>
+      scope.classWriter.visit(52, ACC_PUBLIC + ACC_SUPER, scope.className, null, "java/lang/Object", null)
+      generateCode(header)
+      generateBody()
+      generateMainMethod()
+      scope.classWriter.visitEnd()
+
+      def generateBody() = {
+        val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
+
+        methodVisitor.visitVarInsn(ALOAD, 0)
+        methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+
+        constToInit.foreach { case (variable, value) =>
+          methodVisitor.visitVarInsn(ALOAD, 0)
+          methodVisitor.visitLdcInsn(new Integer(value))
+          methodVisitor.visitFieldInsn(PUTFIELD, scope.className, variable, "I");
+        }
+
+        generateCode(body)(Scope(scope.classWriter, methodVisitor, scope.className))
+        methodVisitor.visitInsn(RETURN)
+        methodVisitor.visitMaxs(1, 1) //params will be ignored because of COMPUTE_FRAMES used
+        methodVisitor.visitEnd()
+      }
+
+      def generateMainMethod() = {
+        val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC + ACC_STATIC, "main", "([Ljava/lang/String;)V", null, null)
+        methodVisitor.visitCode()
+        methodVisitor.visitTypeInsn(NEW, scope.className)
+        methodVisitor.visitMethodInsn(INVOKESPECIAL, scope.className, "<init>", "()V", false)
+        methodVisitor.visitInsn(RETURN)
+        methodVisitor.visitMaxs(2, 1)
+        methodVisitor.visitEnd()
+      }
+
+
+    case Header(declarations) =>
+      declarations.foreach(generateCode)
+
+    case VarDeclarationBlock(declarations) =>
+      declarations.foreach(generateCode)
+
+    case VarDeclarationList(variables, variablesType) =>
+      variables.foreach(variable => {
+        val fieldVisitor = scope.classWriter.visitField(ACC_PRIVATE, variable, variablesType.toJvmType, null, null)
+        fieldVisitor.visitEnd()
+      })
+    case ConstDeclarationBlock(declarations) =>
+      declarations.foreach(generateCode)
+
+    case ConstDeclaration(variable, value) =>
+      println(s"$variable $value")
+      val fieldVisitor = scope.classWriter.visitField(ACC_PRIVATE + ACC_FINAL, variable, "I", null, null)
+      fieldVisitor.visitEnd()
+      constToInit.put(variable, value);
+
+    case StatementBlock(statements) =>
+      statements.foreach(generateCode)
+
+    case AssignStatement(variable, expr) =>
+      scope.methodVisitor.visitVarInsn(ALOAD, 0)
+      generateCode(expr)
+      scope.methodVisitor.visitFieldInsn(PUTFIELD, scope.className, variable.variable, "I")
+
+    case expression: Expression =>
+      generateExpression(expression)
 
     case IfStatement(condition, trueWay, falseWay) =>
       generateCode(condition)
@@ -175,7 +181,6 @@ object CodeGenerator {
       loopType match {
         case LoopType.To => scope.methodVisitor.visitJumpInsn(IF_ICMPGT, continueLabel)
         case LoopType.Downto => scope.methodVisitor.visitJumpInsn(IF_ICMPLT, continueLabel)
-
       }
 
       generateCode(statements)
@@ -194,13 +199,18 @@ object CodeGenerator {
 
       scope.methodVisitor.visitLabel(continueLabel)
       scope.methodVisitor.visitFrame(F_SAME, 0, null, 0, null)
+
+    case procedureCall@ProcedureCall(name, parameters) =>
+      if (StandardFunction.isStandardFunction(name)) {
+          StandardFunction.generateStandardFunctionCall(procedureCall)
+      }
   }
 
 
   def apply(ast: Program, className: String) = {
     val classWriter: ClassWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES)
 
-    generateCode(ast)(CodeGeneratorScope(classWriter, null, className.capitalize))
+    generateCode(ast)(Scope(classWriter, null, className.capitalize))
     classWriter.toByteArray
   }
 }

@@ -55,5 +55,4 @@ class ParserTest extends FlatSpec with Matchers {
           Some(StatementBlock(List(AssignStatement(VariableRef("a"), Number(2)))))))))
     tokenizeAndParse(code) shouldBe Right(expectedAst)
   }
-
 }

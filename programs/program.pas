@@ -1,6 +1,6 @@
 program;
-    var a, b: Integer;
+    var i: integer;
 begin
-    a := 1;
-    b := a;
-end.
+    for i := 1 to 10 do
+        write(i);
+end.l

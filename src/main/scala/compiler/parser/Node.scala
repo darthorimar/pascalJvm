@@ -68,6 +68,11 @@ case class WhileStatement(condition: Expression, statements: StatementBlock) ext
 case class ForStatement(counterVariable: VariableRef, from: Expression, loopType: LoopType,
                         to: Expression, statements: StatementBlock) extends Statement
 
+case class ProcedureCall(name: String, parameters: Seq[ProcedureParameter]) extends Statement
+
+case class ProcedureParameter(expression: Expression)
+
+
 case class StatementBlock(statements: Seq[Statement]) extends Node
 
 case class Header(declarations: Seq[Declaration]) extends Node

@@ -138,6 +138,7 @@ object TypeChecker {
       val toError = checkExpressionType(to, Number, "Range value")
       val statementsErrors = typeCheck(statements)
       collectErrors(List(counterVariableError, fromError, toError, statementsErrors))
+    case ProcedureCall(_, _) => collectErrors(List())
   }
 
   def apply(ast: Program) = typeCheck(ast)
