@@ -7,10 +7,10 @@ import org.objectweb.asm.Opcodes._
 trait StandardFunction {
   def generate(parameters: Seq[ProcedureParameter])(implicit scope: Scope)
 }
-case class WriteFunction() extends StandardFunction {
+case class WriteFunction(newline:Boolean) extends StandardFunction {
   override def generate(parameters: Seq[ProcedureParameter])(implicit scope: Scope): Unit = {
     scope.methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
-    val formatLine = "%d " * parameters.length
+    val formatLine = "%d " * parameters.length + (if (newline) "\n")
     scope.methodVisitor.visitLdcInsn(formatLine)
 
     scope.methodVisitor.visitIntInsn(SIPUSH, parameters.length)
@@ -32,10 +32,12 @@ case class WriteFunction() extends StandardFunction {
   }
 }
 
-
 object StandardFunction {
   private val standardFunctionList =
-    collection.immutable.HashMap[String, StandardFunction]("write" -> new WriteFunction)
+    collection.immutable.HashMap[String, StandardFunction](
+      "write" -> WriteFunction(false),
+      "writeln" -> WriteFunction(true))
+
 
   def generateStandardFunctionCall(procedureCall: ProcedureCall)(implicit scope: Scope): Unit =
     standardFunctionList.getOrElse(procedureCall.name, null).generate(procedureCall.parameters)
