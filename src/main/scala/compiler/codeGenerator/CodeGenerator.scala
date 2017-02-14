@@ -67,10 +67,16 @@ object CodeGenerator {
 
     case Program(header, body) =>
       scope.classWriter.visit(52, ACC_PUBLIC + ACC_SUPER, scope.className, null, "java/lang/Object", null)
+      generateScannerVariable()
       generateCode(header)
       generateBody()
       generateMainMethod()
       scope.classWriter.visitEnd()
+
+      def generateScannerVariable() = {
+        val fieldVisitor = scope.classWriter.visitField(ACC_PRIVATE, "scanner", "Ljava/util/Scanner;", null, null)
+        fieldVisitor.visitEnd()
+      }
 
       def generateBody() = {
         val methodVisitor = scope.classWriter.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
@@ -83,6 +89,13 @@ object CodeGenerator {
           methodVisitor.visitLdcInsn(new Integer(value))
           methodVisitor.visitFieldInsn(PUTFIELD, scope.className, variable, "I");
         }
+
+        methodVisitor.visitVarInsn(ALOAD, 0)
+        methodVisitor.visitTypeInsn(NEW, "java/util/Scanner")
+        methodVisitor.visitInsn(DUP)
+        methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "in", "Ljava/io/InputStream;")
+        methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/util/Scanner", "<init>", "(Ljava/io/InputStream;)V", false)
+        methodVisitor.visitFieldInsn(PUTFIELD, scope.className, "scanner", "Ljava/util/Scanner;")
 
         generateCode(body)(Scope(scope.classWriter, methodVisitor, scope.className))
         methodVisitor.visitInsn(RETURN)
