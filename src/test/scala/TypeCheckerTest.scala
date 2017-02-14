@@ -10,14 +10,14 @@ class TypeCheckerTest extends FlatSpec with Matchers {
       BinaryOperatorExpression(Number(1),
         BinaryOperatorExpression(Number(2), Number(3), BinaryOperator.Times), BinaryOperator.Plus)
 
-    TypeChecker.getExpressionType(expression) shouldBe Right(Number)
+    TypeChecker.getExpressionType(expression)(null) shouldBe Right(Number)
   }
 
   "Type Checker" should "throw error" in {
     val expression: Expression =
       BinaryOperatorExpression(Number(2), BooleanConst(true), BinaryOperator.Times)
 
-    TypeChecker.getExpressionType(expression).isLeft shouldBe true
+    TypeChecker.getExpressionType(expression)(null).isLeft shouldBe true
   }
 
   "Type Checker" should "type check ast" in {

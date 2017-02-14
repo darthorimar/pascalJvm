@@ -43,6 +43,11 @@ object Boolean extends VariableType {
   override def toJvmType(): String = "Z"
 }
 
+object NoType extends VariableType {
+  override def toJvmType(): String = ""
+}
+
+
 object LoopType extends Enumeration {
   type LoopType = Value
   val To = Value("to")
@@ -52,7 +57,9 @@ object LoopType extends Enumeration {
 sealed trait Node extends Positional
 case class Program(header: Header, body: StatementBlock) extends Node
 
-sealed trait Expression extends Node
+sealed trait Expression extends Node {
+  var expressionType: VariableType = NoType
+}
 
 case class VariableRef(variable: String) extends Expression
 case class Number(value: Integer) extends Expression

@@ -1,4 +1,5 @@
 package compiler.typeChecker
+
 import compiler.parser.BinaryOperator.BinaryOperator
 import compiler.parser.{BinaryOperator, _}
 import compiler.{Location, TypeCheckError}
@@ -11,19 +12,21 @@ object TypeChecker {
   private def collectErrors(first: CheckResult, second: CheckResult): CheckResult = {
     Option(first.getOrElse(List.empty) ++ second.getOrElse(List.empty)).filterNot(_.isEmpty)
   }
+
   private def collectErrors(results: Seq[CheckResult]): CheckResult = {
     if (results.nonEmpty) results reduceLeft collectErrors else None
   }
 
-  private class Identifier(val name: String, val itemType: VariableType, val isVariable: Boolean)
+  class Identifier(val name: String, val itemType: VariableType, val isVariable: Boolean)
 
-  private val environment = collection.mutable.Map[String, Identifier]()
+  case class Scope(variables: collection.mutable.Map[String, Identifier])
 
   private def makeError(message: String, node: Node) =
     List(TypeCheckError(Location(node.pos), message))
 
-  private def checkExpressionType(expression: Expression,
-                                  variableType: VariableType, expressionName: String): CheckResult = {
+  def checkExpressionType(expression: Expression,
+                                  variableType: VariableType, expressionName: String)
+                                 (implicit scope: Scope): CheckResult = {
     getExpressionType(expression) match {
       case Left(errors) => Some(errors)
       case Right(varType) =>
@@ -55,10 +58,10 @@ object TypeChecker {
     => (List(Boolean), Boolean)
   }
 
-  def getExpressionType(expression: Expression): Either[List[TypeCheckError], VariableType] = {
+  def getExpressionType(expression: Expression)(implicit scope: Scope): Either[List[TypeCheckError], VariableType] = {
     expression match {
       case VariableRef(variable) =>
-        Either.cond(environment.contains(variable), environment(variable).itemType,
+        Either.cond(scope.variables.contains(variable), scope.variables(variable).itemType,
           makeError(s"Identifier $variable not found", expression))
 
       case Number(_) => Right(Number)
@@ -81,7 +84,7 @@ object TypeChecker {
     }
   }
 
-  private def typeCheck(node: Node): Option[List[TypeCheckError]] = node match {
+  private def typeCheck(node: Node)(implicit scope: Scope): Option[List[TypeCheckError]] = node match {
     case Program(header, body) => collectErrors(typeCheck(header), typeCheck(body))
 
     case Header(declarations) => collectErrors(declarations.map(typeCheck))
@@ -90,12 +93,16 @@ object TypeChecker {
 
     case ConstDeclarationBlock(variables) => collectErrors(variables.map(typeCheck))
 
-    case expression: Expression => getExpressionType(expression).fold(Some(_), _ => None)
+    case expression: Expression =>
+      val expressionType = getExpressionType(expression)
+      if (expressionType.isRight)
+        expression.expressionType = expressionType.right.get
+      expressionType.fold(Some(_), _ => None)
 
     case node@VarDeclarationList(variables, variableType) =>
       val result = variables.map(name =>
-        if (!environment.contains(name)) {
-          environment.put(name, new Identifier(name, Number, true))
+        if (!scope.variables.contains(name)) {
+          scope.variables.put(name, new Identifier(name, Number, true))
           None
         }
         else
@@ -104,8 +111,8 @@ object TypeChecker {
       collectErrors(result)
 
     case node@ConstDeclaration(name, value) =>
-      if (!environment.contains(name)) {
-        environment.put(name, new Identifier(name, Number, false))
+      if (!scope.variables.contains(name)) {
+        scope.variables.put(name, new Identifier(name, Number, false))
         None
       }
       else
@@ -114,7 +121,7 @@ object TypeChecker {
     case StatementBlock(statements) => collectErrors(statements.map(typeCheck))
 
     case node@AssignStatement(variable, expression) =>
-      val variableType = environment.get(variable.variable) match {
+      val variableType = scope.variables.get(variable.variable) match {
         case Some(identifier) =>
           Option(makeError("Can not assign to const", node)).filter(_ => !identifier.isVariable)
         case None => Some(makeError(s"Variable `${variable.variable}` not found", variable))
@@ -141,5 +148,6 @@ object TypeChecker {
     case ProcedureCall(_, _) => collectErrors(List())
   }
 
-  def apply(ast: Program) = typeCheck(ast)
+  def apply(ast: Program): Option[List[TypeCheckError]] =
+    typeCheck(ast)(Scope(collection.mutable.Map[String, Identifier]()))
 }
