@@ -24,7 +24,7 @@ class TypeCheckerTest extends FlatSpec with Matchers {
     val ast: Program =
       Program(
         Header(List(
-          VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), compiler.parser.Number))),
+          VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), BaseVariableType.Number))),
           ConstDeclarationBlock(List(ConstDeclaration("c", 1))))),
         StatementBlock(List(
           IfStatement(
@@ -39,7 +39,7 @@ class TypeCheckerTest extends FlatSpec with Matchers {
     val ast: Program =
       Program(
         Header(List(
-          VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), compiler.parser.Number))),
+          VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), BaseVariableType.Number))),
           ConstDeclarationBlock(List(ConstDeclaration("c", 1))))),
         StatementBlock(List(
           IfStatement(

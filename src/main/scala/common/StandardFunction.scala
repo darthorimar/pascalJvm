@@ -2,11 +2,12 @@ package common
 
 import compiler.codeGenerator.CodeGenerator
 import compiler.codeGenerator.CodeGenerator.Scope
-import compiler.parser.{ProcedureCall, ProcedureParameter, VariableRef}
+import compiler.parser._
 import org.objectweb.asm.Opcodes._
 
 trait StandardFunction {
   def generate(parameters: Seq[ProcedureParameter])(implicit scope: Scope)
+  val parameterTypes: List[_ >: VariableType]
 }
 
 case class ReadFunction() extends StandardFunction {
@@ -14,12 +15,14 @@ case class ReadFunction() extends StandardFunction {
     parameters.foreach({ case ProcedureParameter(variableRef: VariableRef) =>
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
       scope.methodVisitor.visitFieldInsn(GETFIELD, scope.className, "scanner", "Ljava/util/Scanner;")
-      scope.methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/util/Scanner", "nextInt", "()I", false)
+      scope.methodVisitor.visitMethodInsn(  INVOKEVIRTUAL, "java/util/Scanner", "nextInt", "()I", false)
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
       scope.methodVisitor.visitInsn(SWAP)
       scope.methodVisitor.visitFieldInsn(PUTFIELD, scope.className, variableRef.variable, "I")
     })
   }
+
+  override val parameterTypes: List[_ >: VariableType] = List(+BaseVariableType.Number)
 }
 
 case class WriteFunction(newline: Boolean) extends StandardFunction {
@@ -45,6 +48,8 @@ case class WriteFunction(newline: Boolean) extends StandardFunction {
       "java/io/PrintStream", "printf", "(Ljava/lang/String;[Ljava/lang/Object;)Ljava/io/PrintStream;", false)
     scope.methodVisitor.visitInsn(POP)
   }
+
+  override val parameterTypes: List[_ >: VariableType] = List(+BaseVariableType.Number)
 }
 
 object StandardFunction {
@@ -60,5 +65,8 @@ object StandardFunction {
 
   def isStandardFunction(name: String): Boolean =
     standardFunctionList.contains(name)
+
+  def byName(name: String) : StandardFunction=
+    standardFunctionList.getOrElse(name, null)
 }
 

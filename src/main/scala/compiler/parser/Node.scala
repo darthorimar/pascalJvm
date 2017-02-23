@@ -25,28 +25,33 @@ object BinaryOperator extends Enumeration {
 
 
 sealed trait VariableType extends Positional {
-  def toJvmType(): String
+  def unary_+  = {
+    new RepeatedVariableType(this)
+  }
 }
 
-object VariableType {
-  def apply(t: String) = t.toLowerCase match {
+class RepeatedVariableType(val childType: VariableType) extends VariableType
+
+object BaseVariableType {
+  def apply(t: String): BaseVariableType = t.toLowerCase match {
     case "integer" => Number
     case "boolean" => Boolean
   }
+  object Number extends BaseVariableType {
+    override def toJvmType: String = "I"
+  }
+  object Boolean extends BaseVariableType {
+    override def toJvmType: String = "Z"
+  }
 
+  object NoType extends BaseVariableType {
+    override def toJvmType: String = ""
+  }
 }
 
-object Number extends VariableType {
-  override def toJvmType(): String = "I"
+trait BaseVariableType extends VariableType {
+  def toJvmType: String
 }
-object Boolean extends VariableType {
-  override def toJvmType(): String = "Z"
-}
-
-object NoType extends VariableType {
-  override def toJvmType(): String = ""
-}
-
 
 object LoopType extends Enumeration {
   type LoopType = Value
@@ -58,7 +63,7 @@ sealed trait Node extends Positional
 case class Program(header: Header, body: StatementBlock) extends Node
 
 sealed trait Expression extends Node {
-  var expressionType: VariableType = NoType
+  var expressionType: VariableType = BaseVariableType.NoType
 }
 
 case class VariableRef(variable: String) extends Expression
@@ -88,7 +93,7 @@ case class Header(declarations: Seq[Declaration]) extends Node
 sealed trait Declaration extends Node
 
 case class VarDeclarationBlock(declarations: Seq[VarDeclarationList]) extends Declaration
-case class VarDeclarationList(vars: Seq[String], varType: VariableType) extends Node
+case class VarDeclarationList(vars: Seq[String], varType: BaseVariableType) extends Node
 
 case class ConstDeclarationBlock(declarations: Seq[ConstDeclaration]) extends Declaration
 case class ConstDeclaration(name: String, value: Int) extends Node

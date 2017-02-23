@@ -46,7 +46,7 @@ class ParserTest extends FlatSpec with Matchers {
 
     val expectedAst = Program(
       Header(List(
-        VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), compiler.parser.Number))),
+        VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), BaseVariableType.Number))),
         ConstDeclarationBlock(List(ConstDeclaration("c", 1))))),
       StatementBlock(List(
         IfStatement(

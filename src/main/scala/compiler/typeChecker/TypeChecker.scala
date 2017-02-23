@@ -1,5 +1,6 @@
 package compiler.typeChecker
 
+import common.StandardFunction
 import compiler.parser.BinaryOperator.BinaryOperator
 import compiler.parser.{BinaryOperator, _}
 import compiler.{Location, TypeCheckError}
@@ -41,21 +42,21 @@ object TypeChecker {
          | BinaryOperator.Times
          | BinaryOperator.Division
          | BinaryOperator.Modulo
-    => (List(Number), Number)
+    => (List(BaseVariableType.Number), BaseVariableType.Number)
 
     case BinaryOperator.Less
          | BinaryOperator.LessEqual
          | BinaryOperator.Greater
          | BinaryOperator.GreaterEqual
-    => (List(Number), Boolean)
+    => (List(BaseVariableType.Number), BaseVariableType.Boolean)
 
     case BinaryOperator.Equals
          | BinaryOperator.NotEquals
-    => (List(Number, Boolean), Boolean)
+    => (List(BaseVariableType.Number,BaseVariableType.Boolean),BaseVariableType.Boolean)
 
     case BinaryOperator.And
          | BinaryOperator.Or
-    => (List(Boolean), Boolean)
+    => (List(BaseVariableType.Boolean),BaseVariableType.Boolean)
   }
 
   def getExpressionType(expression: Expression)(implicit scope: Scope): Either[List[TypeCheckError], VariableType] = {
@@ -64,9 +65,9 @@ object TypeChecker {
         Either.cond(scope.variables.contains(variable), scope.variables(variable).itemType,
           makeError(s"Identifier $variable not found", expression))
 
-      case Number(_) => Right(Number)
+      case Number(_) => Right(BaseVariableType.Number)
 
-      case BooleanConst(_) => Right(Boolean)
+      case BooleanConst(_) => Right(BaseVariableType.Boolean)
 
       case BinaryOperatorExpression(expression1, expression2, operator) =>
         val expression1Type = getExpressionType(expression1)
@@ -81,6 +82,24 @@ object TypeChecker {
             resultType,
             makeError(s"Can not apply operator `$operator` to an $expression1Type expression", expression1))
         }
+    }
+  }
+
+  private def typeCheck_(actual: List[VariableType], expected: List[_ >: BaseVariableType],
+                         node: ProcedureCall): Option[List[TypeCheckError]] = {
+    if (expected.length != actual.length && !expected.last.isInstanceOf[RepeatedVariableType])
+      Some(makeError("Wrong number of arguments", node))
+    else {
+      val expectedFilled =/*TODO: rename*/
+        expected.dropRight(1) ++ (expected.last match {
+          case variableType: RepeatedVariableType => List.tabulate(expected.length - actual.length + 1)(
+            _ => variableType.childType)
+          case _ => List(expected.last)
+        })
+      if (actual.zip(expectedFilled).forall(t => t._1 == t._2))
+        None
+      else
+        Some(makeError("Argument type mismatch", node))
     }
   }
 
@@ -102,7 +121,7 @@ object TypeChecker {
     case node@VarDeclarationList(variables, variableType) =>
       val result = variables.map(name =>
         if (!scope.variables.contains(name)) {
-          scope.variables.put(name, new Identifier(name, Number, true))
+          scope.variables.put(name, new Identifier(name, BaseVariableType.Number, true))
           None
         }
         else
@@ -112,7 +131,7 @@ object TypeChecker {
 
     case node@ConstDeclaration(name, value) =>
       if (!scope.variables.contains(name)) {
-        scope.variables.put(name, new Identifier(name, Number, false))
+        scope.variables.put(name, new Identifier(name, BaseVariableType.Number, false))
         None
       }
       else
@@ -129,23 +148,34 @@ object TypeChecker {
       collectErrors(variableType, typeCheck(expression))
 
     case IfStatement(condition, trueWay, falseWay) =>
-      val conditionType = checkExpressionType(condition, Boolean, "Condition expression")
+      val conditionType = checkExpressionType(condition,BaseVariableType.Boolean, "Condition expression")
       val trueWayType = typeCheck(trueWay)
       val falseWayType = falseWay.flatMap(typeCheck)
       collectErrors(List(conditionType, trueWayType, falseWayType))
 
     case WhileStatement(condition, statements) =>
-      val conditionType = checkExpressionType(condition, Boolean, "Condition expression")
+      val conditionType = checkExpressionType(condition,BaseVariableType.Boolean, "Condition expression")
       val statementsType = typeCheck(statements)
       collectErrors(conditionType, statementsType)
 
     case ForStatement(counterVariable, from, loopType, to, statements) =>
-      val counterVariableError = checkExpressionType(counterVariable, Number, "Counter variable")
-      val fromError = checkExpressionType(from, Number, "Range value")
-      val toError = checkExpressionType(to, Number, "Range value")
+      val counterVariableError = checkExpressionType(counterVariable, BaseVariableType.Number, "Counter variable")
+      val fromError = checkExpressionType(from, BaseVariableType.Number, "Range value")
+      val toError = checkExpressionType(to, BaseVariableType.Number, "Range value")
       val statementsErrors = typeCheck(statements)
       collectErrors(List(counterVariableError, fromError, toError, statementsErrors))
-    case ProcedureCall(_, _) => collectErrors(List())
+
+    case node@ProcedureCall(name, parameters) =>
+      val procedure = StandardFunction.byName(name)
+      if (procedure == null)
+        Some(makeError(s"Procedure ${name} not found", node))
+      else {
+        val parametersTypes = parameters.map { case ProcedureParameter(expression) => getExpressionType(expression) }
+        if (parametersTypes.forall(_.isRight)) {
+          typeCheck_(parametersTypes.map(_.right.get).toList, procedure.parameterTypes, node)
+        } else
+          collectErrors(parametersTypes.map { case Left(errors) => Some(errors); case Right(_) => None })
+      }
   }
 
   def apply(ast: Program): Option[List[TypeCheckError]] =

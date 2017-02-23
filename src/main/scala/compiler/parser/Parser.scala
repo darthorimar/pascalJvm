@@ -100,7 +100,7 @@ object Parser extends Parsers {
     IDENTIFIER("begin") ~> rep(statement) <~ IDENTIFIER("end") ^^ (statements => StatementBlock(statements))
   }
 
-  def variableType = positioned {identifier ^^ (varType => VariableType(varType))}
+  def variableType = positioned {identifier ^^ (varType => BaseVariableType(varType))}
 
   def declaration = positioned {
     def varDeclarationBlock = IDENTIFIER("var") ~ rep1(varDeclarationList) ^^ {
