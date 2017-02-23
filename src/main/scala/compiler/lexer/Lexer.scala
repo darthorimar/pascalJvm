@@ -11,7 +11,7 @@ object Lexer extends RegexParsers {
   }
 
   def number = positioned {
-    "[0-9]+".r ^^ NUMBER.compose(_.toInt)
+    "-?[0-9]+".r ^^ NUMBER.compose(_.toInt)
   }
 
   def booleanConst = positioned {
@@ -43,10 +43,10 @@ object Lexer extends RegexParsers {
 
 
   def tokens: Parser[List[Token]] =
-    phrase(rep1(notEquals | lessEquals | less | greaterEquals | greater | equals
+    phrase(rep1(number | notEquals | lessEquals | less | greaterEquals | greater | equals
       | plus | minus | times | div | modulo
       | assign | colon | comma | dot | leftParenthesis | rightParenthesis | semicolon
-      | and | or | number | booleanConst | identifier))
+      | and | or | booleanConst | identifier))
 
   def apply(code: String): Either[List[LexerError], List[Token]] =
     parse(tokens, code) match {
