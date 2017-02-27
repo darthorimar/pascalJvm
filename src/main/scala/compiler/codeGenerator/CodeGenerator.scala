@@ -21,6 +21,9 @@ object CodeGenerator {
     case BooleanConst(value) =>
       scope.methodVisitor.visitIntInsn(BIPUSH, if (value) 1 else 0)
 
+    case StringLiteral(value) =>
+      scope.methodVisitor.visitLdcInsn(value);
+
     case BinaryOperatorExpression(exp1, exp2, op) =>
       generateCode(exp1)
       generateCode(exp2)

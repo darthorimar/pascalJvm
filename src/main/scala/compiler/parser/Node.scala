@@ -25,23 +25,34 @@ object BinaryOperator extends Enumeration {
 
 
 sealed trait VariableType extends Positional {
-  def unary_+  = {
-    new RepeatedVariableType(this)
-  }
+  def unary_+ : RepeatedVariableType =
+    RepeatedVariableType(this)
+
+  def | (second :VariableType): ConjunctedVariableType =
+    ConjunctedVariableType(Seq(this, second))
 }
 
-class RepeatedVariableType(val childType: VariableType) extends VariableType
+case class RepeatedVariableType(childType: VariableType) extends VariableType
+
+case class ConjunctedVariableType(variables: Seq[VariableType]) extends VariableType {
+  override def | (second :VariableType): ConjunctedVariableType =
+    ConjunctedVariableType(second +: variables)
+}
 
 object BaseVariableType {
   def apply(t: String): BaseVariableType = t.toLowerCase match {
     case "integer" => Number
     case "boolean" => Boolean
+    case "string" => String
   }
   object Number extends BaseVariableType {
     override def toJvmType: String = "I"
   }
   object Boolean extends BaseVariableType {
     override def toJvmType: String = "Z"
+  }
+  object String extends BaseVariableType {
+    override def toJvmType: String = "Ljava/lang/String;"
   }
 
   object NoType extends BaseVariableType {
@@ -69,6 +80,7 @@ sealed trait Expression extends Node {
 case class VariableRef(variable: String) extends Expression
 case class Number(value: Integer) extends Expression
 case class BooleanConst(value: Boolean) extends Expression
+case class StringLiteral(value :String) extends Expression
 case class BinaryOperatorExpression(exp1: Expression, exp2: Expression, op: BinaryOperator) extends Expression
 
 

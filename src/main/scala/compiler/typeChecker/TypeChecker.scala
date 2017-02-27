@@ -69,6 +69,8 @@ object TypeChecker {
 
       case BooleanConst(_) => Right(BaseVariableType.Boolean)
 
+      case StringLiteral(_) => Right(BaseVariableType.String)
+
       case BinaryOperatorExpression(expression1, expression2, operator) =>
         val expression1Type = getExpressionType(expression1)
         val expression2Type = getExpressionType(expression2)
@@ -87,20 +89,21 @@ object TypeChecker {
 
   private def typeCheck_(actual: List[VariableType], expected: List[_ >: BaseVariableType],
                          node: ProcedureCall): Option[List[TypeCheckError]] = {
-    if (expected.length != actual.length && !expected.last.isInstanceOf[RepeatedVariableType])
-      Some(makeError("Wrong number of arguments", node))
-    else {
-      val expectedFilled =/*TODO: rename*/
-        expected.dropRight(1) ++ (expected.last match {
-          case variableType: RepeatedVariableType => List.tabulate(expected.length - actual.length + 1)(
-            _ => variableType.childType)
-          case _ => List(expected.last)
-        })
-      if (actual.zip(expectedFilled).forall(t => t._1 == t._2))
-        None
-      else
-        Some(makeError("Argument type mismatch", node))
-    }
+//    if (expected.length != actual.length && !expected.last.isInstanceOf[RepeatedVariableType])
+//      Some(makeError("Wrong number of arguments", node))
+//    else {
+//      val expectedFilled =/*TODO: rename*/
+//        expected.dropRight(1) ++ (expected.last match {
+//          case variableType: RepeatedVariableType => List.tabulate(expected.length - actual.length + 1)(
+//            _ => variableType.childType)
+//          case _ => List(expected.last)
+//        })
+//      if (actual.zip(expectedFilled).forall(t => t._1 == t._2))
+//        None
+//      else
+//        Some(makeError("Argument type mismatch", node))
+//    }
+    None
   }
 
   private def typeCheck(node: Node)(implicit scope: Scope): Option[List[TypeCheckError]] = node match {
@@ -178,6 +181,9 @@ object TypeChecker {
       else {
         val parametersTypes = parameters.map { case ProcedureParameter(expression) => getExpressionType(expression) }
         if (parametersTypes.forall(_.isRight)) {
+          parametersTypes.map(_.right.get)
+            .zip(parameters.map(_.expression))
+            .foreach{case (varType, expression)=> expression.expressionType = varType}
           typeCheck_(parametersTypes.map(_.right.get).toList, procedure.parameterTypes, node)
         } else
           collectErrors(parametersTypes.map { case Left(errors) => Some(errors); case Right(_) => None })

@@ -7,6 +7,7 @@ trait Token extends Positional
 case class IDENTIFIER(name: String) extends Token
 case class NUMBER(value: Int) extends Token
 case class BOOLEAN_CONST(value: Boolean) extends Token
+case class STRING_LITERAL(value: String) extends Token
 
 case class SEMICOLON() extends Token
 case class LEFT_PARENTHESIS() extends Token

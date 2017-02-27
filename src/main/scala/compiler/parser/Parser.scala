@@ -20,6 +20,9 @@ object Parser extends Parsers {
   private def booleanConst =
     accept("bool const", { case BOOLEAN_CONST(value) => BooleanConst(value) })
 
+  private def stringLiteral =
+    accept("string literal", { case STRING_LITERAL(value) => StringLiteral(value) })
+
   def nonEmptyListWithSeparator[I, S](item: Parser[I], separator: Parser[S]) =
     item ~ rep(separator ~ item) ^^ {
       case first ~ others => first :: others.map(_._2)
@@ -52,7 +55,7 @@ object Parser extends Parsers {
 
   def expression = positioned {
     def parExpresssion: Parser[Expression] = LEFT_PARENTHESIS() ~> lastExpression <~ RIGHT_PARENTHESIS()
-    def firstExpression = number | booleanConst | variableRef | parExpresssion
+    def firstExpression =  stringLiteral |number | booleanConst | variableRef | parExpresssion
     def secondExpression = binaryOperator(firstExpression, TIMES() | DIVISION() | MODULO() | AND())
     def thirdExpression = binaryOperator(secondExpression, PLUS() | MINUS() | OR())
     def lastExpression = binaryOperator(thirdExpression,

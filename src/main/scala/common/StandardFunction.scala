@@ -28,19 +28,27 @@ case class ReadFunction() extends StandardFunction {
 case class WriteFunction(newline: Boolean) extends StandardFunction {
   override def generate(parameters: Seq[ProcedureParameter])(implicit scope: Scope): Unit = {
     scope.methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
-    val formatLine = "%d " * parameters.length + (if (newline) "\n" else "")
+    val formatLine = parameters.map { parameter =>
+      parameter.expression.expressionType match {
+        case BaseVariableType.String => "%s"
+        case BaseVariableType.Number => "%d"
+      }
+    }.mkString(" ") + (if (newline) "\n" else "")
     scope.methodVisitor.visitLdcInsn(formatLine)
 
     scope.methodVisitor.visitIntInsn(SIPUSH, parameters.length)
     scope.methodVisitor.visitTypeInsn(ANEWARRAY, "java/lang/Object")
     for ((parameter, i) <- parameters.zipWithIndex) {
-      //Let's assume that all params are ints for now
       scope.methodVisitor.visitInsn(DUP)
 
       scope.methodVisitor.visitIntInsn(SIPUSH, i)
       CodeGenerator.generateExpression(parameter.expression)
-      scope.methodVisitor.visitMethodInsn(INVOKESTATIC,
-        "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false)
+      parameter.expression.expressionType match {
+        case BaseVariableType.Number =>
+          scope.methodVisitor.visitMethodInsn(INVOKESTATIC,
+            "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false)
+        case BaseVariableType.String =>
+      }
       scope.methodVisitor.visitInsn(AASTORE)
     }
 
@@ -49,7 +57,7 @@ case class WriteFunction(newline: Boolean) extends StandardFunction {
     scope.methodVisitor.visitInsn(POP)
   }
 
-  override val parameterTypes: List[_ >: VariableType] = List(+BaseVariableType.Number)
+  override val parameterTypes: List[_ >: VariableType] = List(+(BaseVariableType.Number | BaseVariableType.String))
 }
 
 object StandardFunction {

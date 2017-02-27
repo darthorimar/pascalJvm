@@ -18,6 +18,10 @@ object Lexer extends RegexParsers {
     """(?i)(true|false)""".r ^^ BOOLEAN_CONST.compose(_.toBoolean)
   }
 
+  def string = positioned {
+    """'[^']*'""".r ^^ STRING_LITERAL.compose(_.drop(1).dropRight(1))
+  }
+
   def semicolon = positioned {";" ^^ (_ => SEMICOLON())}
   def colon = positioned {":" ^^ (_ => COLON())}
   def leftParenthesis = positioned {"(" ^^ (_ => LEFT_PARENTHESIS())}
@@ -46,7 +50,7 @@ object Lexer extends RegexParsers {
     phrase(rep1(number | notEquals | lessEquals | less | greaterEquals | greater | equals
       | plus | minus | times | div | modulo
       | assign | colon | comma | dot | leftParenthesis | rightParenthesis | semicolon
-      | and | or | booleanConst | identifier))
+      | and | or | booleanConst | identifier | string))
 
   def apply(code: String): Either[List[LexerError], List[Token]] =
     parse(tokens, code) match {
