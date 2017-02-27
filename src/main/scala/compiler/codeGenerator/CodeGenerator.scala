@@ -10,7 +10,7 @@ import scala.collection.mutable
 
 object CodeGenerator {
 
-  val constToInit: mutable.Map[String, Int] = new mutable.HashMap[String, Int]
+  val constToInit: mutable.Map[String, Expression] = new mutable.HashMap[String, Expression]
 
   case class Scope(classWriter: ClassWriter, methodVisitor: MethodVisitor, className: String)
 
@@ -84,9 +84,9 @@ object CodeGenerator {
         methodVisitor.visitVarInsn(ALOAD, 0)
         methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
 
-        constToInit.foreach { case (variable, value) =>
+        constToInit.foreach { case (variable, expression) =>
           methodVisitor.visitVarInsn(ALOAD, 0)
-          methodVisitor.visitLdcInsn(new Integer(value))
+          generateCode(expression)(Scope(scope.classWriter, methodVisitor, scope.className))
           methodVisitor.visitFieldInsn(PUTFIELD, scope.className, variable, "I");
         }
 
@@ -128,11 +128,10 @@ object CodeGenerator {
     case ConstDeclarationBlock(declarations) =>
       declarations.foreach(generateCode)
 
-    case ConstDeclaration(variable, value) =>
-      println(s"$variable $value")
+    case ConstDeclaration(variable, expression) =>
       val fieldVisitor = scope.classWriter.visitField(ACC_PRIVATE + ACC_FINAL, variable, "I", null, null)
       fieldVisitor.visitEnd()
-      constToInit.put(variable, value);
+      constToInit.put(variable, expression);
 
     case StatementBlock(statements) =>
       statements.foreach(generateCode)

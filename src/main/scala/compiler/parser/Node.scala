@@ -96,4 +96,4 @@ case class VarDeclarationBlock(declarations: Seq[VarDeclarationList]) extends De
 case class VarDeclarationList(vars: Seq[String], varType: BaseVariableType) extends Node
 
 case class ConstDeclarationBlock(declarations: Seq[ConstDeclaration]) extends Declaration
-case class ConstDeclaration(name: String, value: Int) extends Node
+case class ConstDeclaration(name: String, expression: Expression) extends Node

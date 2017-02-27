@@ -110,7 +110,8 @@ object TypeChecker {
 
     case VarDeclarationBlock(variables) => collectErrors(variables.map(typeCheck))
 
-    case ConstDeclarationBlock(variables) => collectErrors(variables.map(typeCheck))
+    case ConstDeclarationBlock(constDeclarations) =>
+      collectErrors(constDeclarations.map(typeCheck))
 
     case expression: Expression =>
       val expressionType = getExpressionType(expression)
@@ -129,13 +130,18 @@ object TypeChecker {
       )
       collectErrors(result)
 
-    case node@ConstDeclaration(name, value) =>
-      if (!scope.variables.contains(name)) {
-        scope.variables.put(name, new Identifier(name, BaseVariableType.Number, false))
-        None
-      }
-      else
+    case node@ConstDeclaration(name, expression) =>
+      if (scope.variables.contains(name))
         Some(makeError(s"Identifier `$name` is already defined", node))
+      else {
+        getExpressionType(expression) match {
+          case Left(errors) => Some(errors)
+          case Right(expressionType) =>
+            scope.variables.put(name, new Identifier(name, BaseVariableType.Number, false))
+            None
+        }
+      }
+
 
     case StatementBlock(statements) => collectErrors(statements.map(typeCheck))
 

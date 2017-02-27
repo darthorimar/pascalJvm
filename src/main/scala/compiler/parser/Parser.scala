@@ -115,8 +115,8 @@ object Parser extends Parsers {
       case _ ~ declarations => ConstDeclarationBlock(declarations)
     }
 
-    def constDeclaration = identifier ~ EQUALS() ~ number ~ SEMICOLON() ^^ {
-      case name ~ _ ~ Number(value) ~ _ => ConstDeclaration(name, value)
+    def constDeclaration = identifier ~ EQUALS() ~ expression ~ SEMICOLON() ^^ {
+      case name ~ _ ~ expr ~ _ => ConstDeclaration(name, expr)
     }
 
     varDeclarationBlock | constDeclarationBlock

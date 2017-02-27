@@ -25,7 +25,7 @@ class TypeCheckerTest extends FlatSpec with Matchers {
       Program(
         Header(List(
           VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), BaseVariableType.Number))),
-          ConstDeclarationBlock(List(ConstDeclaration("c", 1))))),
+          ConstDeclarationBlock(List(ConstDeclaration("c", Number(1)))))),
         StatementBlock(List(
           IfStatement(
             BinaryOperatorExpression(VariableRef("c"), Number(1), BinaryOperator.Equals),
@@ -40,7 +40,7 @@ class TypeCheckerTest extends FlatSpec with Matchers {
       Program(
         Header(List(
           VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), BaseVariableType.Number))),
-          ConstDeclarationBlock(List(ConstDeclaration("c", 1))))),
+          ConstDeclarationBlock(List(ConstDeclaration("c", Number(1)))))),
         StatementBlock(List(
           IfStatement(
             BinaryOperatorExpression(VariableRef("c"), Number(1), BinaryOperator.Equals),
