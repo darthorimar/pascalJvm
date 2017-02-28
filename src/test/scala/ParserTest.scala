@@ -1,3 +1,4 @@
+import common.BaseVariableType
 import compiler.lexer._
 import compiler.parser._
 import org.scalatest._
@@ -46,7 +47,7 @@ class ParserTest extends FlatSpec with Matchers {
 
     val expectedAst = Program(
       Header(List(
-        VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), BaseVariableType.Number))),
+        VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), VariableTypeNode(BaseVariableType.Number)))),
         ConstDeclarationBlock(List(ConstDeclaration("c", Number(1)))))),
       StatementBlock(List(
         IfStatement(

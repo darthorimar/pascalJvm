@@ -1,3 +1,4 @@
+import common.BaseVariableType
 import compiler.parser._
 import compiler.typeChecker.TypeChecker
 import org.scalatest._
@@ -24,7 +25,7 @@ class TypeCheckerTest extends FlatSpec with Matchers {
     val ast: Program =
       Program(
         Header(List(
-          VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), BaseVariableType.Number))),
+          VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), VariableTypeNode(BaseVariableType.Number)))),
           ConstDeclarationBlock(List(ConstDeclaration("c", Number(1)))))),
         StatementBlock(List(
           IfStatement(
@@ -39,7 +40,7 @@ class TypeCheckerTest extends FlatSpec with Matchers {
     val ast: Program =
       Program(
         Header(List(
-          VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), BaseVariableType.Number))),
+          VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), VariableTypeNode(BaseVariableType.Number)))),
           ConstDeclarationBlock(List(ConstDeclaration("c", Number(1)))))),
         StatementBlock(List(
           IfStatement(

@@ -125,7 +125,7 @@ object CodeGenerator {
 
     case VarDeclarationList(variables, variablesType) =>
       variables.foreach(variable => {
-        val fieldVisitor = scope.classWriter.visitField(ACC_PRIVATE, variable, variablesType.toJvmType, null, null)
+        val fieldVisitor = scope.classWriter.visitField(ACC_PRIVATE, variable, variablesType.variableType.toJvmType, null, null)
         fieldVisitor.visitEnd()
       })
     case ConstDeclarationBlock(declarations) =>

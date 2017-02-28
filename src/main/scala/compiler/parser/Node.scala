@@ -1,5 +1,6 @@
 package compiler.parser
 
+import common.{BaseVariableType, VariableType}
 import compiler.parser.BinaryOperator.BinaryOperator
 import compiler.parser.LoopType.LoopType
 
@@ -23,46 +24,7 @@ object BinaryOperator extends Enumeration {
   val Or = Value//("or")
 }
 
-
-sealed trait VariableType extends Positional {
-  def unary_+ : RepeatedVariableType =
-    RepeatedVariableType(this)
-
-  def | (second :VariableType): ConjunctedVariableType =
-    ConjunctedVariableType(Seq(this, second))
-}
-
-case class RepeatedVariableType(childType: VariableType) extends VariableType
-
-case class ConjunctedVariableType(variables: Seq[VariableType]) extends VariableType {
-  override def | (second :VariableType): ConjunctedVariableType =
-    ConjunctedVariableType(second +: variables)
-}
-
-object BaseVariableType {
-  def apply(t: String): BaseVariableType = t.toLowerCase match {
-    case "integer" => Number
-    case "boolean" => Boolean
-    case "string" => String
-  }
-  object Number extends BaseVariableType {
-    override def toJvmType: String = "I"
-  }
-  object Boolean extends BaseVariableType {
-    override def toJvmType: String = "Z"
-  }
-  object String extends BaseVariableType {
-    override def toJvmType: String = "Ljava/lang/String;"
-  }
-
-  object NoType extends BaseVariableType {
-    override def toJvmType: String = ""
-  }
-}
-
-trait BaseVariableType extends VariableType {
-  def toJvmType: String
-}
+case class VariableTypeNode(variableType : BaseVariableType) extends Positional
 
 object LoopType extends Enumeration {
   type LoopType = Value
@@ -105,7 +67,7 @@ case class Header(declarations: Seq[Declaration]) extends Node
 sealed trait Declaration extends Node
 
 case class VarDeclarationBlock(declarations: Seq[VarDeclarationList]) extends Declaration
-case class VarDeclarationList(vars: Seq[String], varType: BaseVariableType) extends Node
+case class VarDeclarationList(vars: Seq[String], varType: VariableTypeNode) extends Node
 
 case class ConstDeclarationBlock(declarations: Seq[ConstDeclaration]) extends Declaration
 case class ConstDeclaration(name: String, expression: Expression) extends Node

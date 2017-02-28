@@ -1,5 +1,6 @@
 package compiler.parser
 
+import common.BaseVariableType
 import compiler.lexer._
 import compiler.parser.BinaryOperator.BinaryOperator
 import compiler.parser.LoopType.LoopType
@@ -103,7 +104,7 @@ object Parser extends Parsers {
     IDENTIFIER("begin") ~> rep(statement) <~ IDENTIFIER("end") ^^ (statements => StatementBlock(statements))
   }
 
-  def variableType = positioned {identifier ^^ (varType => BaseVariableType(varType))}
+  def variableType = positioned {identifier ^^ (varType => VariableTypeNode(BaseVariableType(varType)))}
 
   def declaration = positioned {
     def varDeclarationBlock = IDENTIFIER("var") ~ rep1(varDeclarationList) ^^ {

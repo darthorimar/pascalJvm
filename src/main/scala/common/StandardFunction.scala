@@ -7,7 +7,7 @@ import org.objectweb.asm.Opcodes._
 
 trait StandardFunction {
   def generate(parameters: Seq[ProcedureParameter])(implicit scope: Scope)
-  val parameterTypes: List[_ >: VariableType]
+  val parameterTypes: Seq[_ >: VariableType]
 }
 
 case class ReadFunction() extends StandardFunction {
@@ -22,7 +22,7 @@ case class ReadFunction() extends StandardFunction {
     })
   }
 
-  override val parameterTypes: List[_ >: VariableType] = List(+BaseVariableType.Number)
+  override val parameterTypes: Seq[_ >: VariableType] = Seq(+BaseVariableType.Number)
 }
 
 case class WriteFunction(newline: Boolean) extends StandardFunction {
@@ -57,11 +57,11 @@ case class WriteFunction(newline: Boolean) extends StandardFunction {
     scope.methodVisitor.visitInsn(POP)
   }
 
-  override val parameterTypes: List[_ >: VariableType] = List(+(BaseVariableType.Number | BaseVariableType.String))
+  override val parameterTypes: Seq[_ >: VariableType] = Seq(+(BaseVariableType.Number | BaseVariableType.String))
 }
 
 object StandardFunction {
-  private val standardFunctionList =
+    private val standardFunctionList =
     collection.immutable.HashMap[String, StandardFunction](
       "write" -> WriteFunction(false),
       "writeln" -> WriteFunction(true),

@@ -1,6 +1,6 @@
 package compiler.typeChecker
 
-import common.StandardFunction
+import common.{BaseVariableType, StandardFunction, VariableType}
 import compiler.parser.BinaryOperator.BinaryOperator
 import compiler.parser.{BinaryOperator, _}
 import compiler.{Location, TypeCheckError}
@@ -18,7 +18,7 @@ object TypeChecker {
     if (results.nonEmpty) results reduceLeft collectErrors else None
   }
 
-  class Identifier(val name: String, val itemType: VariableType, val isVariable: Boolean)
+  class Identifier(val name: String, val itemType: BaseVariableType, val isVariable: Boolean)
 
   case class Scope(variables: collection.mutable.Map[String, Identifier])
 
@@ -26,7 +26,7 @@ object TypeChecker {
     List(TypeCheckError(Location(node.pos), message))
 
   def checkExpressionType(expression: Expression,
-                                  variableType: VariableType, expressionName: String)
+                          variableType: VariableType, expressionName: String)
                                  (implicit scope: Scope): CheckResult = {
     getExpressionType(expression) match {
       case Left(errors) => Some(errors)
@@ -36,7 +36,7 @@ object TypeChecker {
   }
 
 
-  private def getOperatorDescription(operator: BinaryOperator): (Seq[VariableType], VariableType) = operator match {
+  private def getOperatorDescription(operator: BinaryOperator): (Seq[BaseVariableType], BaseVariableType) = operator match {
     case BinaryOperator.Plus
          | BinaryOperator.Minus
          | BinaryOperator.Times
@@ -59,7 +59,7 @@ object TypeChecker {
     => (List(BaseVariableType.Boolean),BaseVariableType.Boolean)
   }
 
-  def getExpressionType(expression: Expression)(implicit scope: Scope): Either[List[TypeCheckError], VariableType] = {
+  def getExpressionType(expression: Expression)(implicit scope: Scope): Either[List[TypeCheckError], BaseVariableType] = {
     expression match {
       case VariableRef(variable) =>
         Either.cond(scope.variables.contains(variable), scope.variables(variable).itemType,
@@ -79,7 +79,7 @@ object TypeChecker {
         else if (expression1Type != expression2Type)
           Left(makeError(s"Types of operands of operator `$operator` must be same", expression1))
         else {
-          val (operandTypes: List[VariableType], resultType) = getOperatorDescription(operator)
+          val (operandTypes: List[VariableTypeNode], resultType) = getOperatorDescription(operator)
           Either.cond(operandTypes.contains(expression1Type.right.get),
             resultType,
             makeError(s"Can not apply operator `$operator` to an $expression1Type expression", expression1))
@@ -87,26 +87,7 @@ object TypeChecker {
     }
   }
 
-  private def typeCheck_(actual: List[VariableType], expected: List[_ >: BaseVariableType],
-                         node: ProcedureCall): Option[List[TypeCheckError]] = {
-//    if (expected.length != actual.length && !expected.last.isInstanceOf[RepeatedVariableType])
-//      Some(makeError("Wrong number of arguments", node))
-//    else {
-//      val expectedFilled =/*TODO: rename*/
-//        expected.dropRight(1) ++ (expected.last match {
-//          case variableType: RepeatedVariableType => List.tabulate(expected.length - actual.length + 1)(
-//            _ => variableType.childType)
-//          case _ => List(expected.last)
-//        })
-//      if (actual.zip(expectedFilled).forall(t => t._1 == t._2))
-//        None
-//      else
-//        Some(makeError("Argument type mismatch", node))
-//    }
-    None
-  }
-
-  private def typeCheck(node: Node)(implicit scope: Scope): Option[List[TypeCheckError]] = node match {
+   private def typeCheck(node: Node)(implicit scope: Scope): Option[List[TypeCheckError]] = node match {
     case Program(header, body) => collectErrors(typeCheck(header), typeCheck(body))
 
     case Header(declarations) => collectErrors(declarations.map(typeCheck))
@@ -177,14 +158,17 @@ object TypeChecker {
     case node@ProcedureCall(name, parameters) =>
       val procedure = StandardFunction.byName(name)
       if (procedure == null)
-        Some(makeError(s"Procedure ${name} not found", node))
+        Some(makeError(s"Procedure $name not found", node))
       else {
         val parametersTypes = parameters.map { case ProcedureParameter(expression) => getExpressionType(expression) }
         if (parametersTypes.forall(_.isRight)) {
           parametersTypes.map(_.right.get)
             .zip(parameters.map(_.expression))
             .foreach{case (varType, expression)=> expression.expressionType = varType}
-          typeCheck_(parametersTypes.map(_.right.get).toList, procedure.parameterTypes, node)
+          if (VariableType.isRightParamsSeq(procedure.parameterTypes, parametersTypes.map(_.right.get)))
+            None
+          else
+            Some(makeError(s"Bad $name procedure signature", node))
         } else
           collectErrors(parametersTypes.map { case Left(errors) => Some(errors); case Right(_) => None })
       }
