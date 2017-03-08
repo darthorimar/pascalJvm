@@ -5,7 +5,7 @@ import compiler.parser.Parser
 import compiler.typeChecker.TypeChecker
 
 object Compiler {
-  def compile(code: String, className: String) = {
+  def compile(code: String, className: String): Either[List[CompilationError], Array[Byte]] = {
     Lexer(code) match {
       case Left(errors) => Left(errors)
       case Right(tokens) =>

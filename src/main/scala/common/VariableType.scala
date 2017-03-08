@@ -18,7 +18,7 @@ sealed trait VariableType {
 }
 
 object VariableType {
-  def isRightParamsSeq(constraints: Seq[ _ >: VariableType], types: Seq[BaseVariableType]): Boolean = {
+  def isRightParamsSeq(constraints: Seq[_ >: VariableType], types: Seq[BaseVariableType]): Boolean = {
     if (constraints.length != types.length && !constraints.last.isInstanceOf[RepeatedVariableType])
       false
     else {

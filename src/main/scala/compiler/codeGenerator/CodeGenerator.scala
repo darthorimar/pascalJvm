@@ -15,10 +15,10 @@ object CodeGenerator {
   case class Scope(classWriter: ClassWriter, methodVisitor: MethodVisitor, className: String)
 
   def generateExpression(expression: Expression)(implicit scope: Scope) = expression match {
-    case Number(value) =>
-     scope.methodVisitor.visitLdcInsn(new Integer(value))
+    case IntegerLiteral(value) =>
+      scope.methodVisitor.visitLdcInsn(new Integer(value))
 
-    case BooleanConst(value) =>
+    case BooleanLiteral(value) =>
       scope.methodVisitor.visitIntInsn(BIPUSH, if (value) 1 else 0)
 
     case StringLiteral(value) =>
@@ -61,7 +61,7 @@ object CodeGenerator {
         case BinaryOperator.NotEquals => compareExpression(IF_ICMPEQ);
       }
 
-    case VariableRef(variable) =>
+    case VariableReference(variable) =>
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
       scope.methodVisitor.visitFieldInsn(GETFIELD, scope.className, variable, "I")
   }
@@ -218,7 +218,7 @@ object CodeGenerator {
 
     case procedureCall@ProcedureCall(name, parameters) =>
       if (StandardFunction.isStandardFunction(name)) {
-          StandardFunction.generateStandardFunctionCall(procedureCall)
+        StandardFunction.generateStandardFunctionCall(procedureCall)
       }
   }
 

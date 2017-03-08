@@ -28,9 +28,9 @@ class ParserTest extends FlatSpec with Matchers {
     val expectedAst = Program(
       Header(List()),
       StatementBlock(List(
-        AssignStatement(VariableRef("a"),
-          BinaryOperatorExpression(Number(1),
-            BinaryOperatorExpression(Number(2), Number(3), BinaryOperator.Times), BinaryOperator.Plus)))))
+        AssignStatement(VariableReference("a"),
+          BinaryOperatorExpression(IntegerLiteral(1),
+            BinaryOperatorExpression(IntegerLiteral(2), IntegerLiteral(3), BinaryOperator.Times), BinaryOperator.Plus)))))
     val a = tokenizeAndParse(code) shouldBe Right(expectedAst)
     println(a)
   }
@@ -48,12 +48,12 @@ class ParserTest extends FlatSpec with Matchers {
     val expectedAst = Program(
       Header(List(
         VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), VariableTypeNode(BaseVariableType.Number)))),
-        ConstDeclarationBlock(List(ConstDeclaration("c", Number(1)))))),
+        ConstDeclarationBlock(List(ConstDeclaration("c", IntegerLiteral(1)))))),
       StatementBlock(List(
         IfStatement(
-          BinaryOperatorExpression(VariableRef("c"), Number(1), BinaryOperator.Equals),
-          StatementBlock(List(AssignStatement(VariableRef("a"), Number(1)))),
-          Some(StatementBlock(List(AssignStatement(VariableRef("a"), Number(2)))))))))
+          BinaryOperatorExpression(VariableReference("c"), IntegerLiteral(1), BinaryOperator.Equals),
+          StatementBlock(List(AssignStatement(VariableReference("a"), IntegerLiteral(1)))),
+          Some(StatementBlock(List(AssignStatement(VariableReference("a"), IntegerLiteral(2)))))))))
     tokenizeAndParse(code) shouldBe Right(expectedAst)
   }
 }

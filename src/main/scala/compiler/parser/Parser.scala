@@ -16,10 +16,10 @@ object Parser extends Parsers {
     accept("identifier", { case IDENTIFIER(name) => name.toLowerCase })
 
   private def number =
-    accept("number", { case NUMBER(value) => Number(value) })
+    accept("number", { case NUMBER(value) => IntegerLiteral(value) })
 
   private def booleanConst =
-    accept("bool const", { case BOOLEAN_CONST(value) => BooleanConst(value) })
+    accept("bool const", { case BOOLEAN_CONST(value) => BooleanLiteral(value) })
 
   private def stringLiteral =
     accept("string literal", { case STRING_LITERAL(value) => StringLiteral(value) })
@@ -52,11 +52,11 @@ object Parser extends Parsers {
       case expr1 ~ others => others.foldLeft(expr1)((e, es) => BinaryOperatorExpression(e, es._2, es._1))
     }
 
-  def variableRef = identifier ^^ VariableRef
+  def variableRef = identifier ^^ VariableReference
 
   def expression = positioned {
-    def parExpresssion: Parser[Expression] = LEFT_PARENTHESIS() ~> lastExpression <~ RIGHT_PARENTHESIS()
-    def firstExpression =  stringLiteral |number | booleanConst | variableRef | parExpresssion
+    def parenthesisExpression: Parser[Expression] = LEFT_PARENTHESIS() ~> lastExpression <~ RIGHT_PARENTHESIS()
+    def firstExpression =  stringLiteral |number | booleanConst | variableRef | parenthesisExpression
     def secondExpression = binaryOperator(firstExpression, TIMES() | DIVISION() | MODULO() | AND())
     def thirdExpression = binaryOperator(secondExpression, PLUS() | MINUS() | OR())
     def lastExpression = binaryOperator(thirdExpression,
@@ -88,7 +88,6 @@ object Parser extends Parsers {
         case _ ~ variableName ~ _ ~ from ~ IDENTIFIER(loopType) ~ to ~ _ ~ loopBody
         => ForStatement(variableName, from, loopType, to, loopBody)
       }
-
 
       def procedureCallStatement = identifier ~ LEFT_PARENTHESIS() ~
         nonEmptyListWithSeparator(expression, COMMA()) ~ RIGHT_PARENTHESIS() <~ SEMICOLON() ^^ {

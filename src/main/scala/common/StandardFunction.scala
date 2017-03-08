@@ -12,7 +12,7 @@ trait StandardFunction {
 
 case class ReadFunction() extends StandardFunction {
   override def generate(parameters: Seq[ProcedureParameter])(implicit scope: Scope): Unit = {
-    parameters.foreach({ case ProcedureParameter(variableRef: VariableRef) =>
+    parameters.foreach({ case ProcedureParameter(variableRef: VariableReference) =>
       scope.methodVisitor.visitVarInsn(ALOAD, 0)
       scope.methodVisitor.visitFieldInsn(GETFIELD, scope.className, "scanner", "Ljava/util/Scanner;")
       scope.methodVisitor.visitMethodInsn(  INVOKEVIRTUAL, "java/util/Scanner", "nextInt", "()I", false)
@@ -33,14 +33,13 @@ case class WriteFunction(newline: Boolean) extends StandardFunction {
         case BaseVariableType.String => "%s"
         case BaseVariableType.Number => "%d"
       }
-    }.mkString(" ") + (if (newline) "\n" else "")
+    }.mkString + (if (newline) "\n" else "")
     scope.methodVisitor.visitLdcInsn(formatLine)
 
     scope.methodVisitor.visitIntInsn(SIPUSH, parameters.length)
     scope.methodVisitor.visitTypeInsn(ANEWARRAY, "java/lang/Object")
     for ((parameter, i) <- parameters.zipWithIndex) {
       scope.methodVisitor.visitInsn(DUP)
-
       scope.methodVisitor.visitIntInsn(SIPUSH, i)
       CodeGenerator.generateExpression(parameter.expression)
       parameter.expression.expressionType match {
@@ -66,7 +65,6 @@ object StandardFunction {
       "write" -> WriteFunction(false),
       "writeln" -> WriteFunction(true),
       "read" -> ReadFunction())
-
 
   def generateStandardFunctionCall(procedureCall: ProcedureCall)(implicit scope: Scope): Unit =
     standardFunctionList.getOrElse(procedureCall.name, null).generate(procedureCall.parameters)

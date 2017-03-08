@@ -27,7 +27,7 @@ object TypeChecker {
 
   def checkExpressionType(expression: Expression,
                           variableType: VariableType, expressionName: String)
-                                 (implicit scope: Scope): CheckResult = {
+                         (implicit scope: Scope): CheckResult = {
     getExpressionType(expression) match {
       case Left(errors) => Some(errors)
       case Right(varType) =>
@@ -52,22 +52,22 @@ object TypeChecker {
 
     case BinaryOperator.Equals
          | BinaryOperator.NotEquals
-    => (List(BaseVariableType.Number,BaseVariableType.Boolean),BaseVariableType.Boolean)
+    => (List(BaseVariableType.Number, BaseVariableType.Boolean), BaseVariableType.Boolean)
 
     case BinaryOperator.And
          | BinaryOperator.Or
-    => (List(BaseVariableType.Boolean),BaseVariableType.Boolean)
+    => (List(BaseVariableType.Boolean), BaseVariableType.Boolean)
   }
 
   def getExpressionType(expression: Expression)(implicit scope: Scope): Either[List[TypeCheckError], BaseVariableType] = {
     expression match {
-      case VariableRef(variable) =>
+      case VariableReference(variable) =>
         Either.cond(scope.variables.contains(variable), scope.variables(variable).itemType,
           makeError(s"Identifier $variable not found", expression))
 
-      case Number(_) => Right(BaseVariableType.Number)
+      case IntegerLiteral(_) => Right(BaseVariableType.Number)
 
-      case BooleanConst(_) => Right(BaseVariableType.Boolean)
+      case BooleanLiteral(_) => Right(BaseVariableType.Boolean)
 
       case StringLiteral(_) => Right(BaseVariableType.String)
 
@@ -79,7 +79,7 @@ object TypeChecker {
         else if (expression1Type != expression2Type)
           Left(makeError(s"Types of operands of operator `$operator` must be same", expression1))
         else {
-          val (operandTypes: List[VariableTypeNode], resultType) = getOperatorDescription(operator)
+          val (operandTypes: List[BaseVariableType], resultType) = getOperatorDescription(operator)
           Either.cond(operandTypes.contains(expression1Type.right.get),
             resultType,
             makeError(s"Can not apply operator `$operator` to an $expression1Type expression", expression1))
@@ -87,7 +87,7 @@ object TypeChecker {
     }
   }
 
-   private def typeCheck(node: Node)(implicit scope: Scope): Option[List[TypeCheckError]] = node match {
+  private def typeCheck(node: Node)(implicit scope: Scope): Option[List[TypeCheckError]] = node match {
     case Program(header, body) => collectErrors(typeCheck(header), typeCheck(body))
 
     case Header(declarations) => collectErrors(declarations.map(typeCheck))
@@ -126,7 +126,6 @@ object TypeChecker {
         }
       }
 
-
     case StatementBlock(statements) => collectErrors(statements.map(typeCheck))
 
     case node@AssignStatement(variable, expression) =>
@@ -138,13 +137,13 @@ object TypeChecker {
       collectErrors(variableType, typeCheck(expression))
 
     case IfStatement(condition, trueWay, falseWay) =>
-      val conditionType = checkExpressionType(condition,BaseVariableType.Boolean, "Condition expression")
+      val conditionType = checkExpressionType(condition, BaseVariableType.Boolean, "Condition expression")
       val trueWayType = typeCheck(trueWay)
       val falseWayType = falseWay.flatMap(typeCheck)
       collectErrors(List(conditionType, trueWayType, falseWayType))
 
     case WhileStatement(condition, statements) =>
-      val conditionType = checkExpressionType(condition,BaseVariableType.Boolean, "Condition expression")
+      val conditionType = checkExpressionType(condition, BaseVariableType.Boolean, "Condition expression")
       val statementsType = typeCheck(statements)
       collectErrors(conditionType, statementsType)
 
@@ -164,7 +163,7 @@ object TypeChecker {
         if (parametersTypes.forall(_.isRight)) {
           parametersTypes.map(_.right.get)
             .zip(parameters.map(_.expression))
-            .foreach{case (varType, expression)=> expression.expressionType = varType}
+            .foreach { case (varType, expression) => expression.expressionType = varType }
           if (VariableType.isRightParamsSeq(procedure.parameterTypes, parametersTypes.map(_.right.get)))
             None
           else

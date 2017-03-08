@@ -8,15 +8,15 @@ class TypeCheckerTest extends FlatSpec with Matchers {
 
   "Type Checker" should "determine type of expression" in {
     val expression: Expression =
-      BinaryOperatorExpression(Number(1),
-        BinaryOperatorExpression(Number(2), Number(3), BinaryOperator.Times), BinaryOperator.Plus)
+      BinaryOperatorExpression(IntegerLiteral(1),
+        BinaryOperatorExpression(IntegerLiteral(2), IntegerLiteral(3), BinaryOperator.Times), BinaryOperator.Plus)
 
-    TypeChecker.getExpressionType(expression)(null) shouldBe Right(Number)
+    TypeChecker.getExpressionType(expression)(null) shouldBe Right(IntegerLiteral)
   }
 
   "Type Checker" should "throw error" in {
     val expression: Expression =
-      BinaryOperatorExpression(Number(2), BooleanConst(true), BinaryOperator.Times)
+      BinaryOperatorExpression(IntegerLiteral(2), BooleanLiteral(true), BinaryOperator.Times)
 
     TypeChecker.getExpressionType(expression)(null).isLeft shouldBe true
   }
@@ -26,12 +26,12 @@ class TypeCheckerTest extends FlatSpec with Matchers {
       Program(
         Header(List(
           VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), VariableTypeNode(BaseVariableType.Number)))),
-          ConstDeclarationBlock(List(ConstDeclaration("c", Number(1)))))),
+          ConstDeclarationBlock(List(ConstDeclaration("c", IntegerLiteral(1)))))),
         StatementBlock(List(
           IfStatement(
-            BinaryOperatorExpression(VariableRef("c"), Number(1), BinaryOperator.Equals),
-            StatementBlock(List(AssignStatement(VariableRef("a"), Number(1)))),
-            Some(StatementBlock(List(AssignStatement(VariableRef("a"), Number(2)))))))))
+            BinaryOperatorExpression(VariableReference("c"), IntegerLiteral(1), BinaryOperator.Equals),
+            StatementBlock(List(AssignStatement(VariableReference("a"), IntegerLiteral(1)))),
+            Some(StatementBlock(List(AssignStatement(VariableReference("a"), IntegerLiteral(2)))))))))
 
     TypeChecker(ast).isEmpty shouldBe true
   }
@@ -41,12 +41,12 @@ class TypeCheckerTest extends FlatSpec with Matchers {
       Program(
         Header(List(
           VarDeclarationBlock(List(VarDeclarationList(List("a", "b"), VariableTypeNode(BaseVariableType.Number)))),
-          ConstDeclarationBlock(List(ConstDeclaration("c", Number(1)))))),
+          ConstDeclarationBlock(List(ConstDeclaration("c", IntegerLiteral(1)))))),
         StatementBlock(List(
           IfStatement(
-            BinaryOperatorExpression(VariableRef("c"), Number(1), BinaryOperator.Equals),
-            StatementBlock(List(AssignStatement(VariableRef("c"), Number(1)))),
-            Some(StatementBlock(List(AssignStatement(VariableRef("a"), Number(2)))))))))
+            BinaryOperatorExpression(VariableReference("c"), IntegerLiteral(1), BinaryOperator.Equals),
+            StatementBlock(List(AssignStatement(VariableReference("c"), IntegerLiteral(1)))),
+            Some(StatementBlock(List(AssignStatement(VariableReference("a"), IntegerLiteral(2)))))))))
 
     TypeChecker(ast).isDefined shouldBe true
   }
